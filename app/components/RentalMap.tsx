@@ -3,110 +3,150 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
-  TileLayer,
   Marker,
   Polygon,
   Polyline,
+  TileLayer,
   Tooltip,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
-import { AUSTRIA_BOUNDS, isInAustria } from "@/lib/austria";
-import { JKU_CAMPUS_POLYGON, JKU_LINZ } from "@/lib/jku";
-import type { TransitJourney } from "@/lib/transit";
-import type { Listing } from "@/lib/willhaben";
 import "leaflet/dist/leaflet.css";
-
-const LINZ_CENTER: [number, number] = [48.3069, 14.2858];
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import type { Listing } from "@/lib/willhaben";
+import { AUSTRIA_BOUNDS } from "@/lib/austria";
+import type { City } from "@/lib/cities";
+import type { TransitJourney } from "@/lib/transit";
+import type { MapLayerId } from "@/lib/map-layers";
+import type { University } from "@/lib/universities";
+import ListingMarkerCluster from "./ListingMarkerCluster";
 
 const AUSTRIA_MAP_BOUNDS: L.LatLngBoundsExpression = [
   [AUSTRIA_BOUNDS.latMin, AUSTRIA_BOUNDS.lngMin],
   [AUSTRIA_BOUNDS.latMax, AUSTRIA_BOUNDS.lngMax],
 ];
 
-function createListingIcon(selected: boolean) {
-  if (selected) {
-    return L.divIcon({
-      className: "",
-      html: `<div style="position:relative;width:28px;height:28px;">
-        <div style="
-          position:absolute;inset:0;border-radius:50%;
-          background:rgba(0,102,204,0.25);
-          animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;
-        "></div>
-        <div style="
-          position:absolute;top:50%;left:50%;
-          transform:translate(-50%,-50%);
-          width:18px;height:18px;
-          background:#0066cc;
-          border:3px solid white;
-          border-radius:50%;
-          box-shadow:0 2px 8px rgba(0,0,0,0.35);
-        "></div>
-      </div>
-      <style>@keyframes ping{75%,100%{transform:scale(2);opacity:0}}</style>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-    });
-  }
+const MAP_LAYERS: Record<
+  MapLayerId,
+  { name: string; url: string; attribution: string; maxZoom?: number }
+> = {
+  streets: {
+    name: "Streets",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  },
+  satellite: {
+    name: "Satellite",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution:
+      "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
+    maxZoom: 19,
+  },
+  topo: {
+    name: "Terrain",
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution:
+      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>, <a href="https://opentopomap.org">OpenTopoMap</a>',
+    maxZoom: 17,
+  },
+};
+
+type RentalMapProps = {
+  listings: Listing[];
+  selectedId: string | null;
+  mapLayer: MapLayerId;
+  city: City;
+  university: University;
+  onSelect: (listing: Listing) => void;
+};
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat("de-AT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function createListingIcon(listing: Listing, selected: boolean) {
+  const kind = listing.source;
+  const priceLabel = listing.price ? formatEuro(listing.price) : "·";
+  const title = escapeHtml(listing.title);
+  const meta =
+    listing.source === "shared"
+      ? "Shared flat · usually all-in"
+      : listing.source === "dorms"
+        ? "Dorm · usually all-in"
+        : listing.monthlyCost
+          ? `Est. ${escapeHtml(listing.monthlyCost.totalDisplay)}`
+          : "Apartment";
 
   return L.divIcon({
-    className: "",
-    html: `<div style="
-      width:14px;height:14px;
-      background:#e11d48;
-      border:2px solid white;
-      border-radius:50%;
-      box-shadow:0 1px 4px rgba(0,0,0,0.35);
-    "></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    className: "listing-marker-root",
+    iconSize: [220, 120],
+    iconAnchor: [110, 120],
+    html: `<div class="listing-pin ${selected ? "listing-pin-selected" : ""} listing-pin-${kind}">
+      <div class="listing-pin-card">
+        <div class="listing-pin-compact">${priceLabel}</div>
+        <div class="listing-pin-expand">
+          <p class="listing-pin-title">${title}</p>
+          <p class="listing-pin-meta">${meta}</p>
+          <p class="listing-pin-price-lg">${priceLabel}</p>
+        </div>
+      </div>
+      <span class="listing-pin-caret" aria-hidden="true"></span>
+    </div>`,
   });
 }
 
-const jkuIcon = L.divIcon({
-  className: "",
-  html: `<div style="
-    display:flex;align-items:center;justify-content:center;
-    width:32px;height:32px;
-    background:#1d4ed8;
-    border:3px solid white;
-    border-radius:8px;
-    color:white;font-size:10px;font-weight:700;
-    box-shadow:0 2px 8px rgba(0,0,0,0.35);
-    letter-spacing:-0.02em;
-  ">JKU</div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
-function campusBounds(): L.LatLngBounds {
-  return L.latLngBounds(JKU_CAMPUS_POLYGON);
+function createCampusIcon(label: string) {
+  const safe = escapeHtml(label);
+  return L.divIcon({
+    className: "",
+    iconSize: [52, 44],
+    iconAnchor: [26, 44],
+    html: `<div class="campus-pin">${safe}</div>`,
+  });
 }
 
 function MapViewport({
   listings,
   selectedId,
   routeGeometry,
+  university,
+  city,
 }: {
   listings: Listing[];
   selectedId: string | null;
   routeGeometry: [number, number][];
+  university: University;
+  city: City;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    const bounds = campusBounds();
-    const selected = selectedId
-      ? listings.find((item) => item.id === selectedId)
-      : null;
+    map.invalidateSize();
+  }, [map]);
 
-    if (selected) {
-      bounds.extend([selected.lat, selected.lng]);
-      for (const point of routeGeometry) {
-        bounds.extend(point);
-      }
-      map.fitBounds(bounds, {
+  useEffect(() => {
+    map.flyTo([university.lat, university.lng], Math.max(city.defaultZoom, 14), {
+      duration: 0.7,
+    });
+  }, [university.id, university.lat, university.lng, city.defaultZoom, map]);
+
+  useEffect(() => {
+    if (routeGeometry.length > 1) {
+      map.fitBounds(L.latLngBounds(routeGeometry), {
         padding: [56, 56],
         maxZoom: 15,
         animate: true,
@@ -114,45 +154,38 @@ function MapViewport({
       return;
     }
 
-    for (const listing of listings) {
-      bounds.extend([listing.lat, listing.lng]);
+    const selected = listings.find((l) => l.id === selectedId);
+    if (selected) {
+      map.flyTo([selected.lat, selected.lng], Math.max(map.getZoom(), 15), {
+        duration: 0.6,
+      });
     }
-
-    if (listings.length > 0) {
-      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
-    } else {
-      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
-    }
-  }, [listings, selectedId, routeGeometry, map]);
+  }, [listings, map, routeGeometry, selectedId]);
 
   return null;
 }
 
-type RentalMapProps = {
-  listings: Listing[];
-  selectedId: string | null;
-  onSelect: (listing: Listing) => void;
-};
-
 export default function RentalMap({
   listings,
   selectedId,
+  mapLayer,
+  city,
+  university,
   onSelect,
 }: RentalMapProps) {
   const [routeGeometry, setRouteGeometry] = useState<[number, number][]>([]);
-
   const withCoords = useMemo(
     () =>
-      listings.filter(
-        (l) =>
-          Number.isFinite(l.lat) &&
-          Number.isFinite(l.lng) &&
-          isInAustria(l.lat, l.lng),
-      ),
+      listings.filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng)),
     [listings],
   );
-
-  const selected = withCoords.find((l) => l.id === selectedId) ?? null;
+  const selected = listings.find((l) => l.id === selectedId) ?? null;
+  const layer = MAP_LAYERS[mapLayer];
+  const createIcon = useMemo(() => createListingIcon, []);
+  const campusIcon = useMemo(
+    () => createCampusIcon(university.shortName),
+    [university.shortName],
+  );
 
   useEffect(() => {
     if (!selected) {
@@ -161,11 +194,13 @@ export default function RentalMap({
     }
 
     let cancelled = false;
-
-    fetch(`/api/transit?lat=${selected.lat}&lng=${selected.lng}`)
-      .then((res) => res.json())
-      .then((data: { journey?: TransitJourney }) => {
-        if (!cancelled && data.journey?.geometry) {
+    const { lat, lng } = selected;
+    fetch(
+      `/api/transit?lat=${lat}&lng=${lng}&university=${encodeURIComponent(university.id)}`,
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { journey?: TransitJourney } | null) => {
+        if (!cancelled && data?.journey?.geometry) {
           setRouteGeometry(data.journey.geometry);
         }
       })
@@ -176,12 +211,12 @@ export default function RentalMap({
     return () => {
       cancelled = true;
     };
-  }, [selected]);
+  }, [selected, university.id]);
 
   return (
     <MapContainer
-      center={LINZ_CENTER}
-      zoom={13}
+      center={[city.center.lat, city.center.lng]}
+      zoom={city.defaultZoom}
       minZoom={7}
       maxBounds={AUSTRIA_MAP_BOUNDS}
       maxBoundsViscosity={1}
@@ -189,32 +224,46 @@ export default function RentalMap({
       scrollWheelZoom
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        key={mapLayer}
+        attribution={layer.attribution}
+        url={layer.url}
+        maxZoom={layer.maxZoom ?? 19}
       />
       <MapViewport
         listings={withCoords}
         selectedId={selectedId}
         routeGeometry={routeGeometry}
+        university={university}
+        city={city}
       />
 
-      <Polygon
-        positions={JKU_CAMPUS_POLYGON}
-        pathOptions={{
-          color: "#1d4ed8",
-          weight: 2.5,
-          fillColor: "#3b82f6",
-          fillOpacity: 0.18,
-        }}
-      >
-        <Tooltip sticky direction="top" opacity={0.95}>
-          <span className="text-sm font-medium">{JKU_LINZ.name} campus</span>
-        </Tooltip>
-      </Polygon>
+      {university.campusPolygon && university.campusPolygon.length > 2 && (
+        <Polygon
+          key={`${university.id}-poly`}
+          positions={university.campusPolygon}
+          pathOptions={{
+            color: "#1d4ed8",
+            weight: 2.5,
+            fillColor: "#3b82f6",
+            fillOpacity: 0.18,
+          }}
+        >
+          <Tooltip sticky direction="top" opacity={0.95}>
+            <span className="text-sm font-medium">
+              {university.shortName} campus
+            </span>
+          </Tooltip>
+        </Polygon>
+      )}
 
-      <Marker position={[JKU_LINZ.lat, JKU_LINZ.lng]} icon={jkuIcon} zIndexOffset={1000}>
+      <Marker
+        key={`${university.id}-marker`}
+        position={[university.lat, university.lng]}
+        icon={campusIcon}
+        zIndexOffset={1000}
+      >
         <Tooltip direction="top" offset={[0, -16]} opacity={1}>
-          <span className="text-sm font-medium">{JKU_LINZ.name}</span>
+          <span className="text-sm font-medium">{university.name}</span>
         </Tooltip>
       </Marker>
 
@@ -230,45 +279,15 @@ export default function RentalMap({
         />
       )}
 
-      {withCoords.map((listing) => {
-        const isSelected = listing.id === selectedId;
-        return (
-          <Marker
-            key={listing.id}
-            position={[listing.lat, listing.lng]}
-            icon={createListingIcon(isSelected)}
-            zIndexOffset={isSelected ? 500 : 0}
-            eventHandlers={{
-              click: () => onSelect(listing),
-            }}
-          >
-            <Tooltip
-              direction="top"
-              offset={[0, -8]}
-              opacity={0.95}
-              className="listing-tooltip"
-            >
-              <div className="text-sm">
-                <p className="listing-tooltip-title">{listing.title}</p>
-                {listing.monthlyCost ? (
-                  <>
-                    <p className="mt-1 font-semibold text-emerald-700">
-                      {listing.monthlyCost.totalDisplay} / month
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      Base rent {listing.priceDisplay}
-                    </p>
-                  </>
-                ) : (
-                  <p className="mt-1 font-semibold text-zinc-900">
-                    {listing.priceDisplay}
-                  </p>
-                )}
-              </div>
-            </Tooltip>
-          </Marker>
-        );
-      })}
+      <ListingMarkerCluster
+        listings={withCoords}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        createIcon={createIcon}
+      />
     </MapContainer>
   );
 }
+
+export type { MapLayerId };
+export { MAP_LAYERS };

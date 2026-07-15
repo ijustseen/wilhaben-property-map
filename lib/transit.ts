@@ -1,4 +1,4 @@
-import { JKU_LINZ } from "./jku";
+import type { University } from "./universities";
 
 const EFA_BASE = "https://www.linzag.at/static/XSLT_TRIP_REQUEST2";
 
@@ -105,9 +105,10 @@ export function formatTransitSteps(legs: TransitLeg[]): string[] {
   return legs.map(legDescription);
 }
 
-export async function fetchTransitJourneyToJku(
+export async function fetchTransitJourneyToCampus(
   fromLat: number,
   fromLng: number,
+  destination: Pick<University, "lat" | "lng">,
 ): Promise<TransitJourney> {
   const params = new URLSearchParams({
     outputFormat: "rapidJSON",
@@ -115,7 +116,7 @@ export async function fetchTransitJourneyToJku(
     type_origin: "coord",
     name_origin: `${fromLng}:${fromLat}:WGS84`,
     type_destination: "coord",
-    name_destination: `${JKU_LINZ.lng}:${JKU_LINZ.lat}:WGS84`,
+    name_destination: `${destination.lng}:${destination.lat}:WGS84`,
     useProxFootSearch: "1",
     ptOptionsActive: "1",
     itOptionsActive: "1",
@@ -154,4 +155,15 @@ export async function fetchTransitJourneyToJku(
   const totalMinutes = legs.reduce((sum, leg) => sum + leg.durationMinutes, 0);
 
   return { totalMinutes, legs, geometry };
+}
+
+/** @deprecated Use fetchTransitJourneyToCampus */
+export async function fetchTransitJourneyToJku(
+  fromLat: number,
+  fromLng: number,
+): Promise<TransitJourney> {
+  return fetchTransitJourneyToCampus(fromLat, fromLng, {
+    lat: 48.3384,
+    lng: 14.3212,
+  });
 }

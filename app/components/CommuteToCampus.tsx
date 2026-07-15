@@ -1,15 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { googleMapsDirectionsUrl, JKU_LINZ } from "@/lib/jku";
 import type { TransitJourney } from "@/lib/transit";
+import {
+  googleMapsDirectionsToUniversity,
+  type University,
+} from "@/lib/universities";
 
-type CommuteToJkuProps = {
+type CommuteToCampusProps = {
   lat: number;
   lng: number;
+  university: University;
 };
 
-export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
+export default function CommuteToCampus({
+  lat,
+  lng,
+  university,
+}: CommuteToCampusProps) {
   const [expanded, setExpanded] = useState(false);
   const [journey, setJourney] = useState<TransitJourney | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +27,7 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
     setExpanded(false);
     setJourney(null);
     setError(null);
-  }, [lat, lng]);
+  }, [lat, lng, university.id]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -28,7 +36,9 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/transit?lat=${lat}&lng=${lng}`)
+    fetch(
+      `/api/transit?lat=${lat}&lng=${lng}&university=${encodeURIComponent(university.id)}`,
+    )
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -38,7 +48,9 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
       .catch((e) => {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "Could not load route to JKU",
+            e instanceof Error
+              ? e.message
+              : `Could not load route to ${university.shortName}`,
           );
         }
       })
@@ -49,14 +61,14 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
     return () => {
       cancelled = true;
     };
-  }, [lat, lng, expanded]);
+  }, [lat, lng, expanded, university.id, university.shortName]);
 
   const summary = journey
     ? `~${journey.totalMinutes} min total`
-    : JKU_LINZ.address;
+    : university.address;
 
   return (
-    <section className="rounded-xl border border-blue-200 bg-blue-50/60">
+    <section className="rounded-xl border border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/30">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
@@ -64,50 +76,55 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
         aria-expanded={expanded}
       >
         <div className="min-w-0">
-          <h2 className="text-base font-semibold text-zinc-900">
-            Commute to {JKU_LINZ.name}
+          <h2 className="text-base font-semibold text-[var(--ink)]">
+            Commute to campus
           </h2>
-          <p className="text-sm text-zinc-600">{summary}</p>
+          <p className="truncate text-sm text-[var(--muted)]">
+            {university.shortName} · {summary}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
-            JKU
+            {university.shortName}
           </span>
-          <span className="text-sm text-zinc-500">{expanded ? "▲" : "▼"}</span>
+          <span className="text-sm text-[var(--muted)]">
+            {expanded ? "▲" : "▼"}
+          </span>
         </div>
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-blue-200 px-4 pb-4 pt-3">
+        <div className="space-y-4 border-t border-blue-200 px-4 pb-4 pt-3 dark:border-blue-900">
           {loading && (
-            <p className="text-sm text-zinc-500">Planning your route…</p>
+            <p className="text-sm text-[var(--muted)]">Planning your route…</p>
           )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           {journey && (
             <>
-              <div className="rounded-lg bg-white px-3 py-2">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">
+              <div className="rounded-lg bg-[var(--surface)] px-3 py-2">
+                <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
                   Total travel time
                 </p>
-                <p className="text-lg font-semibold text-zinc-900">
+                <p className="text-lg font-semibold text-[var(--ink)]">
                   ~{journey.totalMinutes} min
                 </p>
+                <p className="text-xs text-[var(--muted)]">{university.name}</p>
               </div>
 
               <ol className="space-y-2">
                 {journey.legs.map((leg, index) => (
                   <li
                     key={index}
-                    className="flex gap-3 rounded-lg bg-white px-3 py-2 text-sm"
+                    className="flex gap-3 rounded-lg bg-[var(--surface)] px-3 py-2 text-sm"
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                       {index + 1}
                     </span>
                     <div>
                       {leg.type === "walk" ? (
-                        <p className="text-zinc-800">
+                        <p className="text-[var(--ink)]">
                           <span className="font-medium">
                             {leg.durationMinutes} min
                           </span>{" "}
@@ -115,13 +132,13 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
                         </p>
                       ) : (
                         <>
-                          <p className="text-zinc-800">
+                          <p className="text-[var(--ink)]">
                             <span className="font-medium">
                               {leg.lineLabel}
                             </span>{" "}
                             to {leg.to}
                           </p>
-                          <p className="text-xs text-zinc-500">
+                          <p className="text-xs text-[var(--muted)]">
                             {leg.durationMinutes} min
                             {leg.direction ? ` · ${leg.direction}` : ""}
                           </p>
@@ -133,7 +150,7 @@ export default function CommuteToJku({ lat, lng }: CommuteToJkuProps) {
               </ol>
 
               <a
-                href={googleMapsDirectionsUrl(lat, lng)}
+                href={googleMapsDirectionsToUniversity(university, lat, lng)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"

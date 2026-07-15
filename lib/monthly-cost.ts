@@ -14,8 +14,6 @@ export type MonthlyCostSummary = {
   footnote: string | null;
 };
 
-const DEFAULT_OPERATING = 85;
-const DEFAULT_HEATING = 75;
 const DEFAULT_ELECTRICITY = 55;
 const DEFAULT_INTERNET = 35;
 
@@ -34,6 +32,8 @@ type InclusionFlags = {
   electricityIncluded: boolean;
   internetIncluded: boolean;
   warmRent: boolean;
+  operatingExtra: boolean;
+  heatingExtra: boolean;
   electricityExtra: boolean;
 };
 
@@ -72,22 +72,37 @@ function includesCostInRent(text: string, costKeyword: string): boolean {
   return pattern.test(text);
 }
 
+function isBilledExtra(text: string, costKeyword: string): boolean {
+  // VAT notes like "zzgl. 10% USt" must not count as "BK billed separately".
+  const cleaned = text.replace(/\b(zzgl|exkl|inkl)\.?\s*\d+\s*%?\s*ust\b/gi, " ");
+
+  const patterns = [
+    new RegExp(
+      `\\b(zzgl|zuzüglich|exkl|ohne|gesondert|extra|nicht inkl)\\.?\\s*${costKeyword}`,
+      "i",
+    ),
+    new RegExp(
+      `${costKeyword}[^.\\n]{0,32}\\b(gesondert|extra|separat|nicht (?:in der )?miete|vom mieter)\\b`,
+      "i",
+    ),
+  ];
+  return patterns.some((pattern) => pattern.test(cleaned));
+}
+
 function detectInclusions(text: string): InclusionFlags {
-  const includes = (patterns: RegExp[]) => patterns.some((pattern) => pattern.test(text));
+  const includes = (patterns: RegExp[]) =>
+    patterns.some((pattern) => pattern.test(text));
+
+  const operatingExtra =
+    isBilledExtra(text, "betriebskosten") ||
+    isBilledExtra(text, "nebenkosten") ||
+    isBilledExtra(text, "\\bbk\\b");
+  const heatingExtra = isBilledExtra(text, "heiz(?:ung|kosten)?");
 
   return {
-    heatingIncluded:
-      includesCostInRent(text, "heiz(?:ung|kosten)?") ||
-      includes([
-        /heizung,\s*warmwasser/,
-      ]),
-    operatingIncluded:
-      includesCostInRent(text, "betriebskosten") ||
-      includesCostInRent(text, "nebenkosten") ||
-      includes([
-        /\bbk\b[^.\n]{0,20}\binkl(?!\.?\s*mwst)/,
-        /sämtliche betriebskosten inkl/,
-      ]),
+    // Default Austrian assumption: BK/heating are inside the advertised rent.
+    heatingIncluded: !heatingExtra,
+    operatingIncluded: !operatingExtra,
     electricityIncluded:
       includesCostInRent(text, "strom") ||
       includesCostInRent(text, "elektrizität"),
@@ -95,11 +110,9 @@ function detectInclusions(text: string): InclusionFlags {
       includesCostInRent(text, "internet") ||
       includesCostInRent(text, "wlan") ||
       includesCostInRent(text, "wifi"),
-    warmRent: includes([
-      /gesamtmietpreis/,
-      /warmmiete/,
-      /bruttomiete/,
-    ]),
+    warmRent: includes([/gesamtmietpreis/, /warmmiete/, /bruttomiete/]),
+    operatingExtra,
+    heatingExtra,
     electricityExtra: includes([
       /strom[^.\n]{0,40}(extra|gesondert|eigen|verbrauch|anzumelden)/,
       /nur der strom/,
@@ -123,29 +136,32 @@ function parseAmountNearKeywords(
   return null;
 }
 
-function resolvedAmount(
+function resolvedOptionalAmount(
   structured: number | null,
   parsed: number | null,
-  included: boolean,
-  defaultValue: number,
+  shouldAdd: boolean,
+  defaultValue: number | null,
 ): { amount: number; estimated: boolean } | null {
-  if (included) return null;
+  if (!shouldAdd) return null;
   if (structured !== null) return { amount: structured, estimated: false };
   if (parsed !== null) return { amount: parsed, estimated: false };
+  if (defaultValue === null) return null;
   return { amount: defaultValue, estimated: true };
 }
 
-export function buildMonthlyCostSummary(input: CostInput): MonthlyCostSummary | null {
+export function buildMonthlyCostSummary(
+  input: CostInput,
+): MonthlyCostSummary | null {
   if (input.rent === null) return null;
 
   const text = normalizeText(input.text);
   const flags = detectInclusions(text);
-  const treatAsWarmRent = flags.warmRent;
+  const treatAsWarmRent = flags.warmRent || flags.operatingIncluded;
   const lines: MonthlyCostLine[] = [];
 
   lines.push({
     id: "rent",
-    label: treatAsWarmRent ? "Rent (incl. utilities)" : "Base rent",
+    label: treatAsWarmRent ? "Rent (incl. utilities)" : "Listed rent",
     amount: input.rent,
     estimated: false,
   });
@@ -173,35 +189,38 @@ export function buildMonthlyCostSummary(input: CostInput): MonthlyCostSummary | 
     "liwest",
   ]);
 
-  const operating = treatAsWarmRent
-    ? null
-    : resolvedAmount(
-        input.operating,
-        operatingParsed,
-        flags.operatingIncluded,
-        DEFAULT_OPERATING,
-      );
-  const heating = treatAsWarmRent
-    ? null
-    : resolvedAmount(
-        input.heating,
-        heatingParsed,
-        flags.heatingIncluded,
-        DEFAULT_HEATING,
-      );
+  // Default: BK + heating are already inside the advertised rent.
+  // Only add them when the listing explicitly marks them as extra.
+  const operating = resolvedOptionalAmount(
+    input.operating,
+    operatingParsed,
+    flags.operatingExtra,
+    null,
+  );
+  const heating = resolvedOptionalAmount(
+    input.heating,
+    heatingParsed,
+    flags.heatingExtra,
+    null,
+  );
 
   const electricity = flags.electricityIncluded
     ? null
-    : resolvedAmount(
+    : resolvedOptionalAmount(
         input.electricity,
         electricityParsed,
-        false,
+        true,
         DEFAULT_ELECTRICITY,
       );
 
   const internet = flags.internetIncluded
     ? null
-    : resolvedAmount(input.internet, internetParsed, false, DEFAULT_INTERNET);
+    : resolvedOptionalAmount(
+        input.internet,
+        internetParsed,
+        true,
+        DEFAULT_INTERNET,
+      );
 
   if (operating) {
     lines.push({
@@ -209,7 +228,7 @@ export function buildMonthlyCostSummary(input: CostInput): MonthlyCostSummary | 
       label: "Operating costs",
       amount: operating.amount,
       estimated: operating.estimated,
-      note: operating.estimated ? "Typical estimate for water, waste, building services" : undefined,
+      note: "Listed separately from rent",
     });
   }
 
@@ -219,6 +238,7 @@ export function buildMonthlyCostSummary(input: CostInput): MonthlyCostSummary | 
       label: "Heating",
       amount: heating.amount,
       estimated: heating.estimated,
+      note: "Listed separately from rent",
     });
   }
 
@@ -228,7 +248,9 @@ export function buildMonthlyCostSummary(input: CostInput): MonthlyCostSummary | 
       label: "Electricity",
       amount: electricity.amount,
       estimated: electricity.estimated,
-      note: flags.electricityExtra ? "Billed separately by provider" : undefined,
+      note: flags.electricityExtra
+        ? "Billed separately by provider"
+        : "Typical estimate when not included",
     });
   }
 
@@ -245,12 +267,11 @@ export function buildMonthlyCostSummary(input: CostInput): MonthlyCostSummary | 
   const total = lines.reduce((sum, line) => sum + line.amount, 0);
   const hasEstimates = lines.some((line) => line.estimated);
 
-  let footnote: string | null = null;
-  if (treatAsWarmRent) {
-    footnote = "Rent already includes heating, water and operating costs where stated in the listing.";
-  } else if (hasEstimates) {
+  let footnote: string | null =
+    "Listed rent is treated as already including operating costs/heating unless the advert says otherwise. Electricity and home Wi‑Fi are estimated when missing.";
+  if (flags.warmRent) {
     footnote =
-      "Some costs are estimated when the listing does not provide exact amounts.";
+      "Rent already includes heating, water and operating costs where stated in the listing.";
   }
 
   return {
@@ -269,7 +290,9 @@ export function buildMonthlyCostFromAttributes(
 ): MonthlyCostSummary | null {
   const first = (values: string[] | undefined) => values?.[0];
 
-  const sectionText = sections.map((section) => `${section.title}\n${section.html}`).join("\n");
+  const sectionText = sections
+    .map((section) => `${section.title}\n${section.html}`)
+    .join("\n");
 
   return buildMonthlyCostSummary({
     rent:
@@ -279,24 +302,50 @@ export function buildMonthlyCostFromAttributes(
     heating: parseMoney(first(attrs["RENTAL_PRICE/HEATINGCOSTSGROSS"])),
     electricity: null,
     internet: null,
-    text: [description, sectionText, first(attrs["RENTAL_PRICE/PRICE_DESCRIPTION"]) ?? ""].join("\n"),
+    text: [
+      description,
+      sectionText,
+      first(attrs["RENTAL_PRICE/PRICE_DESCRIPTION"]) ?? "",
+    ].join("\n"),
   });
 }
 
 export function buildMonthlyCostFromListingPrice(
   price: number | null,
-  operating: number | null = null,
-  heating: number | null = null,
+  _operating: number | null = null,
+  _heating: number | null = null,
   priceDescription = "",
 ): MonthlyCostSummary | null {
   if (price === null) return null;
 
+  // List-card BK/heating fields are informational; advertised price is the base.
   return buildMonthlyCostSummary({
     rent: price,
-    operating,
-    heating,
+    operating: null,
+    heating: null,
     electricity: null,
     internet: null,
     text: priceDescription,
   });
+}
+
+/** @deprecated Shared flats use the listed all-in price — no estimate. */
+export function buildMonthlyCostForSharedRoom(
+  price: number | null,
+): MonthlyCostSummary | null {
+  if (price === null) return null;
+  return {
+    lines: [
+      {
+        id: "rent",
+        label: "Monthly rent (all-in)",
+        amount: price,
+        estimated: false,
+      },
+    ],
+    total: price,
+    totalDisplay: formatEuro(price, false),
+    hasEstimates: false,
+    footnote: "Shared-flat and dorm prices are usually all-inclusive.",
+  };
 }

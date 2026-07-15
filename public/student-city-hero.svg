@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1219"/>
+      <stop offset="45%" stop-color="#152433"/>
+      <stop offset="100%" stop-color="#2a4458"/>
+    </linearGradient>
+    <linearGradient id="river" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3d7a9a"/>
+      <stop offset="50%" stop-color="#8ec8e8"/>
+      <stop offset="100%" stop-color="#356f8f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="72%" cy="32%" r="45%">
+      <stop offset="0%" stop-color="#d61f3c" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#d61f3c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+  <g opacity="0.2" stroke="#a8bcc9" stroke-width="1">
+    <path d="M0 150 H1600 M0 270 H1600 M0 390 H1600 M0 510 H1600 M0 630 H1600 M0 750 H1600"/>
+    <path d="M120 0 V900 M240 0 V900 M360 0 V900 M480 0 V900 M600 0 V900 M720 0 V900 M840 0 V900 M960 0 V900 M1080 0 V900 M1200 0 V900 M1320 0 V900 M1440 0 V900"/>
+  </g>
+  <path d="M-60 640 C220 560, 400 720, 680 640 S1020 480, 1300 560 S1500 700, 1660 640 L1660 900 L-60 900 Z" fill="#0d1520" opacity="0.75"/>
+  <path d="M-40 590 C280 500, 460 680, 760 590 S1100 430, 1380 520 S1540 680, 1660 620" fill="none" stroke="url(#river)" stroke-width="52" stroke-linecap="round"/>
+  <g fill="#dce6ee" opacity="0.34">
+    <rect x="140" y="420" width="64" height="120" rx="4"/>
+    <rect x="220" y="370" width="52" height="160" rx="4"/>
+    <rect x="300" y="460" width="88" height="90" rx="4"/>
+    <rect x="420" y="400" width="58" height="130" rx="4"/>
+    <rect x="880" y="330" width="76" height="150" rx="4"/>
+    <rect x="980" y="380" width="66" height="120" rx="4"/>
+    <rect x="1080" y="310" width="94" height="170" rx="4"/>
+    <rect x="1200" y="370" width="60" height="130" rx="4"/>
+    <rect x="540" y="470" width="104" height="76" rx="4"/>
+    <rect x="680" y="420" width="72" height="110" rx="4"/>
+  </g>
+  <g filter="url(#shadow)">
+    <circle cx="1020" cy="290" r="32" fill="#1d4ed8"/>
+    <circle cx="1020" cy="290" r="12" fill="#ffffff"/>
+    <circle cx="1020" cy="290" r="5" fill="#1d4ed8"/>
+  </g>
+  <g filter="url(#shadow)" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+    <g transform="translate(360, 300)">
+      <rect x="0" y="0" width="88" height="36" rx="18" fill="#ffffff"/>
+      <text x="44" y="24" text-anchor="middle" fill="#12151a" font-size="17" font-weight="700">&#8364;620</text>
+      <polygon points="44,36 36,48 52,48" fill="#ffffff"/>
+    </g>
+    <g transform="translate(620, 230)">
+      <rect x="0" y="0" width="88" height="36" rx="18" fill="#ffffff"/>
+      <text x="44" y="24" text-anchor="middle" fill="#0f766e" font-size="17" font-weight="700">&#8364;450</text>
+      <polygon points="44,36 36,48 52,48" fill="#ffffff"/>
+    </g>
+    <g transform="translate(1160, 320)">
+      <rect x="0" y="0" width="88" height="36" rx="18" fill="#ffffff"/>
+      <text x="44" y="24" text-anchor="middle" fill="#1d4ed8" font-size="17" font-weight="700">&#8364;380</text>
+      <polygon points="44,36 36,48 52,48" fill="#ffffff"/>
+    </g>
+  </g>
+  <text x="200" y="380" fill="#ffffff" opacity="0.55" font-family="system-ui, sans-serif" font-size="20" font-weight="600">City centre</text>
+  <text x="940" y="220" fill="#ffffff" opacity="0.55" font-family="system-ui, sans-serif" font-size="20" font-weight="600">Campus</text>
+</svg>

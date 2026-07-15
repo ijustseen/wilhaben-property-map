@@ -1,63 +1,102 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import type { AuthUser } from "@/lib/auth";
+import type { City } from "@/lib/cities";
 import type { AppLocale } from "@/lib/locale";
+import { BRAND_NAME } from "@/lib/brand";
+import { universityMapPath, type University } from "@/lib/universities";
 import {
-  EMPTY_FILTERS,
   type Listing,
   type ListingDetail,
+  type ListingSource,
   type SearchFilters,
   searchParamsFromFilters,
 } from "@/lib/willhaben";
+import type { MapLayerId } from "@/lib/map-layers";
 import FiltersPanel from "./FiltersPanel";
 import ListingDetailPanel from "./ListingDetailPanel";
 import MapView from "./MapView";
+import { useFavorites } from "./useFavorites";
 
 type AppShellProps = {
   initialListings: Listing[];
   initialFilters: SearchFilters;
+  initialSource: ListingSource;
   locale: AppLocale;
+  city: City;
+  university: University;
+  user: AuthUser | null;
+};
+
+const SOURCE_LABEL: Record<ListingSource, string> = {
+  apartments: "Apartments",
+  shared: "Shared flats",
+  dorms: "Dorms",
 };
 
 export default function AppShell({
   initialListings,
   initialFilters,
+  initialSource,
   locale,
+  city: initialCity,
+  university: initialUniversity,
+  user,
 }: AppShellProps) {
+  const router = useRouter();
+  const city = initialCity;
+  const [university, setUniversity] = useState(initialUniversity);
+  const [source, setSource] = useState<ListingSource>(initialSource);
   const [listings, setListings] = useState(initialListings);
   const [filters, setFilters] = useState<SearchFilters>(initialFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [loadingListings, setLoadingListings] = useState(false);
   const [listingsError, setListingsError] = useState<string | null>(null);
+  const [mapLayer, setMapLayer] = useState<MapLayerId>("streets");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ListingDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
-  const loadListings = useCallback(async (nextFilters: SearchFilters) => {
-    setLoadingListings(true);
-    setListingsError(null);
+  const { favorites, isFavorite, toggleFavorite } = useFavorites(Boolean(user));
 
-    try {
-      const params = searchParamsFromFilters(nextFilters);
-      const response = await fetch(`/api/listings?${params.toString()}`);
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to load listings");
+  const loadListings = useCallback(
+    async (
+      nextFilters: SearchFilters,
+      nextSource: ListingSource,
+      nextCityId: string,
+    ) => {
+      setLoadingListings(true);
+      setListingsError(null);
+
+      try {
+        const params = searchParamsFromFilters(nextFilters);
+        params.set("source", nextSource);
+        params.set("city", nextCityId);
+        const response = await fetch(`/api/listings?${params.toString()}`);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Failed to load listings");
+        }
+        setListings(data.listings);
+        setFilters(nextFilters);
+        setSource(nextSource);
+        setSelectedId(null);
+        setDetail(null);
+      } catch (e) {
+        setListingsError(
+          e instanceof Error ? e.message : "Failed to load listings",
+        );
+      } finally {
+        setLoadingListings(false);
       }
-      setListings(data.listings);
-      setFilters(nextFilters);
-      setSelectedId(null);
-      setDetail(null);
-    } catch (e) {
-      setListingsError(
-        e instanceof Error ? e.message : "Failed to load listings",
-      );
-    } finally {
-      setLoadingListings(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const loadDetail = useCallback(async (listing: Listing) => {
     setSelectedId(listing.id);
@@ -65,7 +104,13 @@ export default function AppShell({
     setDetailError(null);
 
     try {
-      const response = await fetch(`/api/listings/${listing.id}`);
+      const params = new URLSearchParams({ source: listing.source });
+      if (listing.source === "shared" && listing.url) {
+        params.set("url", listing.url);
+      }
+      const response = await fetch(
+        `/api/listings/${listing.id}?${params.toString()}`,
+      );
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error ?? "Failed to load listing");
@@ -87,6 +132,27 @@ export default function AppShell({
     setDetailError(null);
   }
 
+  function handleApply(
+    nextFilters: SearchFilters,
+    nextSource: ListingSource,
+    nextUniversity: University,
+  ) {
+    if (nextUniversity.status === "soon") {
+      // Keep current map; don't jump to unavailable city
+      void loadListings(nextFilters, nextSource, city.id);
+      return;
+    }
+
+    if (nextUniversity.cityId !== city.id) {
+      router.push(universityMapPath(nextUniversity));
+      return;
+    }
+
+    setUniversity(nextUniversity);
+    router.replace(universityMapPath(nextUniversity), { scroll: false });
+    void loadListings(nextFilters, nextSource, city.id);
+  }
+
   const activeFilterCount = [
     filters.areaId,
     filters.priceFrom,
@@ -96,47 +162,77 @@ export default function AppShell({
     filters.rooms?.length,
   ].filter(Boolean).length;
 
+  const searchSummary = [
+    SOURCE_LABEL[source],
+    filters.priceTo ? `to €${filters.priceTo}` : null,
+    filters.areaId ? `PLZ ${filters.areaId}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const listingsCountLabel =
+    loadingListings
+      ? "Updating…"
+      : listingsError
+        ? "Error"
+        : `${listings.length.toLocaleString("de-AT")} listings`;
+
   return (
-    <div className="flex h-screen flex-col bg-zinc-50">
-      <header className="z-20 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold text-zinc-900">
-              Linz Rentals Map
-            </h1>
-            <p className="text-sm text-zinc-500">
-              Student rentals near JKU
-              {filters.areaId
-                ? ` · PLZ ${filters.areaId}`
-                : " · Linz (4040)"}
-            </p>
-          </div>
+    <div className="flex h-screen flex-col bg-[var(--background)]">
+      <header className="map-chrome z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
+        <div className="map-chrome-inner">
+          <Link href="/" className="map-chrome-brand" title="Home">
+            {BRAND_NAME}
+          </Link>
 
-          <div className="flex items-center gap-3 text-sm">
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="rounded-full bg-[#78b41e] px-2 py-0.5 text-xs text-white">
-                  {activeFilterCount}
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="map-search"
+            aria-label="Open search and filters"
+          >
+            <span className="map-search-icon" aria-hidden>
+              ⌕
+            </span>
+            <span className="map-search-text">
+              <span className="map-search-row">
+                <span className="map-search-title">
+                  {university.shortName}
+                  <span className="map-search-sep">·</span>
+                  {city.name}
                 </span>
-              )}
-            </button>
-
-            {loadingListings ? (
-              <span className="text-zinc-500">Updating…</span>
-            ) : listingsError ? (
-              <span className="text-red-600">{listingsError}</span>
-            ) : (
-              <span className="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-700">
-                {listings.length} listings
+                <span className="map-search-count" aria-live="polite">
+                  {listingsCountLabel}
+                </span>
               </span>
+              <span className="map-search-sub">
+                {searchSummary || "Add rent, rooms or housing type"}
+              </span>
+            </span>
+            {activeFilterCount > 0 && (
+              <span className="map-search-badge">{activeFilterCount}</span>
             )}
+          </button>
+
+          <div className="map-chrome-actions">
+            <Link href="/favorites" className="map-chrome-icon-btn" title="Saved">
+              Saved
+              {favorites.length > 0 ? (
+                <span className="map-chrome-dot">{favorites.length}</span>
+              ) : null}
+            </Link>
+            <Link
+              href={user ? "/profile" : "/login?next=/map/" + city.id}
+              className="map-chrome-avatar"
+              title={user ? user.name : "Log in"}
+            >
+              {user ? user.name.slice(0, 1).toUpperCase() : "↑"}
+            </Link>
           </div>
         </div>
+        {listingsError && (
+          <p className="map-chrome-error">{listingsError}</p>
+        )}
       </header>
 
       <main className="relative min-h-0 flex-1 overflow-hidden">
@@ -144,13 +240,20 @@ export default function AppShell({
           <MapView
             listings={listings}
             selectedId={selectedId}
+            loading={loadingListings}
+            mapLayer={mapLayer}
+            city={city}
+            university={university}
+            onMapLayerChange={setMapLayer}
             onSelect={loadDetail}
           />
         </div>
 
         <div
-          className={`absolute inset-y-0 right-0 z-[1000] flex w-full shadow-2xl lg:w-[45%] transition-transform duration-300 ease-out ${
-            selectedId ? "translate-x-0" : "translate-x-full pointer-events-none"
+          className={`absolute inset-y-0 right-0 z-[1000] flex w-full shadow-2xl transition-transform duration-300 ease-out lg:w-[45%] ${
+            selectedId
+              ? "translate-x-0"
+              : "pointer-events-none translate-x-full"
           }`}
         >
           {selectedId && (
@@ -159,6 +262,25 @@ export default function AppShell({
               loading={detailLoading}
               error={detailError}
               locale={locale}
+              university={university}
+              favorited={
+                detail ? isFavorite(detail.id, detail.source) : false
+              }
+              onToggleFavorite={() => {
+                if (!detail) return;
+                void toggleFavorite({
+                  id: detail.id,
+                  source: detail.source,
+                  cityId: city.id,
+                  title: detail.title,
+                  priceDisplay: detail.priceDisplay,
+                  address: detail.address,
+                  url: detail.url,
+                  imageUrl: detail.images[0] ?? null,
+                  lat: detail.lat,
+                  lng: detail.lng,
+                });
+              }}
               onClose={closeDetail}
             />
           )}
@@ -168,8 +290,12 @@ export default function AppShell({
       <FiltersPanel
         open={filtersOpen}
         filters={filters}
+        source={source}
+        university={university}
+        postcodeHint={city.postcodeHint}
+        listingsCountLabel={listingsCountLabel}
         onClose={() => setFiltersOpen(false)}
-        onApply={loadListings}
+        onApply={handleApply}
       />
     </div>
   );

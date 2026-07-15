@@ -3,6 +3,7 @@ import {
   isAustrianPostcode,
   isInAustria,
 } from "@/lib/austria";
+import { getCity, getWillhabenSearchBase } from "@/lib/cities";
 import {
   buildMonthlyCostFromAttributes,
   buildMonthlyCostFromListingPrice,
@@ -11,8 +12,14 @@ import {
 
 export type { MonthlyCostSummary } from "@/lib/monthly-cost";
 
+export type ListingSource = "apartments" | "shared" | "dorms";
+
+/** willhaben supports up to 100 rows per search page */
+const WILLHABEN_PAGE_SIZE = 100;
+
 export type Listing = {
   id: string;
+  source: ListingSource;
   title: string;
   price: number | null;
   priceDisplay: string;
@@ -45,6 +52,7 @@ export type ListingDetailSection = {
 
 export type ListingDetail = {
   id: string;
+  source: ListingSource;
   title: string;
   description: string;
   descriptionHtml: string;
@@ -101,13 +109,10 @@ export const EMPTY_FILTERS: SearchFilters = {
   page: 1,
 };
 
-/** Linz area used when the postal-code filter is left empty. */
-export const APP_DEFAULT_AREA_ID = "4040";
-
 /** @deprecated Use EMPTY_FILTERS for new code */
 export const DEFAULT_FILTERS = EMPTY_FILTERS;
 
-const SEARCH_BASE =
+const NATIONAL_SEARCH_BASE =
   "https://www.willhaben.at/iad/immobilien/mietwohnungen/mietwohnung-angebote";
 
 const FETCH_HEADERS = {
@@ -296,6 +301,7 @@ function parseAdvert(advert: WillhabenAdvert): Listing | null {
 
   return {
     id: advert.id,
+    source: "apartments",
     title: first(attrs.HEADING) ?? advert.description,
     price,
     priceDisplay: first(attrs.PRICE_FOR_DISPLAY) ?? "—",
@@ -375,6 +381,7 @@ function parseDetailAdvert(advert: WillhabenDetailAdvert): ListingDetail {
 
   return {
     id: advert.id,
+    source: "apartments",
     title: advert.description,
     description,
     descriptionHtml,
@@ -438,17 +445,19 @@ function parseDetailAdvert(advert: WillhabenDetailAdvert): ListingDetail {
   };
 }
 
-export function buildSearchUrl(filters: SearchFilters = EMPTY_FILTERS): string {
+export function buildSearchUrl(
+  filters: SearchFilters = EMPTY_FILTERS,
+  cityId = "linz",
+): string {
   const params = new URLSearchParams({
     sfId: "f7861587-a57c-45ed-9e66-d2f4da46741c",
     isNavigation: "true",
     page: String(filters.page ?? 1),
+    rows: String(WILLHABEN_PAGE_SIZE),
   });
 
   if (filters.areaId) {
     params.set("areaId", filters.areaId);
-  } else {
-    params.set("areaId", APP_DEFAULT_AREA_ID);
   }
   if (filters.priceFrom) {
     params.set("PRICE_FROM", String(filters.priceFrom));
@@ -469,7 +478,10 @@ export function buildSearchUrl(filters: SearchFilters = EMPTY_FILTERS): string {
     }
   }
 
-  return `${SEARCH_BASE}?${params.toString()}`;
+  const base = filters.areaId
+    ? NATIONAL_SEARCH_BASE
+    : getWillhabenSearchBase(cityId);
+  return `${base}?${params.toString()}`;
 }
 
 async function fetchWillhabenHtml(url: string): Promise<string> {
@@ -487,24 +499,34 @@ async function fetchWillhabenHtml(url: string): Promise<string> {
 
 export async function fetchListings(
   filters: SearchFilters = EMPTY_FILTERS,
+  cityId = "linz",
 ): Promise<Listing[]> {
+  const city = getCity(cityId);
+  if (!city || city.status !== "available") {
+    return [];
+  }
+
   const listings: Listing[] = [];
   let page = filters.page ?? 1;
-  const maxPages = 20;
+  let rowsFound = Number.POSITIVE_INFINITY;
+  let rowsCollectedFromApi = 0;
+  const maxPages = 100;
 
   while (page <= maxPages) {
-    const html = await fetchWillhabenHtml(buildSearchUrl({ ...filters, page }));
+    const html = await fetchWillhabenHtml(
+      buildSearchUrl({ ...filters, page }, cityId),
+    );
     const data = extractNextData(html);
+    const meta = extractSearchMeta(data);
+    if (meta.rowsFound > 0) rowsFound = meta.rowsFound;
+
     const batch = parseListingsFromPage(data);
     listings.push(...batch);
+    rowsCollectedFromApi += meta.rowsReturned;
 
-    const meta = extractSearchMeta(data);
-    const fetched = listings.length;
-    if (
-      batch.length === 0 ||
-      fetched >= meta.rowsFound ||
-      meta.rowsReturned < 30
-    ) {
+    const lastPageIncomplete = meta.rowsReturned < WILLHABEN_PAGE_SIZE;
+    const reachedCatalogEnd = rowsCollectedFromApi >= rowsFound;
+    if (batch.length === 0 || meta.rowsReturned === 0 || lastPageIncomplete || reachedCatalogEnd) {
       break;
     }
 

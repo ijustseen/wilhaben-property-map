@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import type { AppLocale } from "@/lib/locale";
 import { localeLabel } from "@/lib/locale";
 import type { ListingDetail } from "@/lib/willhaben";
-import CommuteToJku from "./CommuteToJku";
+import CommuteToCampus from "./CommuteToCampus";
 import MonthlyCostCard from "./MonthlyCostCard";
+import type { University } from "@/lib/universities";
 
 type TranslatedContent = {
   title: string;
@@ -20,6 +21,9 @@ type ListingDetailPanelProps = {
   loading: boolean;
   error: string | null;
   locale: AppLocale;
+  university: University;
+  favorited: boolean;
+  onToggleFavorite: () => void;
   onClose: () => void;
 };
 
@@ -28,6 +32,9 @@ export default function ListingDetailPanel({
   loading,
   error,
   locale,
+  university,
+  favorited,
+  onToggleFavorite,
   onClose,
 }: ListingDetailPanelProps) {
   const [imageIndex, setImageIndex] = useState(0);
@@ -94,24 +101,43 @@ export default function ListingDetailPanel({
   const teaser =
     showTranslation && translated ? translated.teaser : detail?.teaser;
 
+  const showEstimate =
+    detail?.source === "apartments" && Boolean(detail.monthlyCost);
+  const isAllIn =
+    detail?.source === "shared" || detail?.source === "dorms";
+
   return (
-    <aside className="flex h-full w-full flex-col border-l border-zinc-200 bg-white">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
+    <aside className="flex h-full w-full flex-col border-l border-[var(--line)] bg-[var(--surface)]">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
             Listing details
           </p>
           {detail && (
-            <p className="truncate text-sm text-zinc-700">{detail.address}</p>
+            <p className="truncate text-sm text-[var(--ink)]">{detail.address}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {detail && (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                favorited
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]"
+                  : "border-[var(--line)] text-[var(--ink)] hover:bg-[var(--mist)]"
+              }`}
+              aria-pressed={favorited}
+            >
+              {favorited ? "Saved ★" : "Save ★"}
+            </button>
+          )}
           {detail && (
             <a
               href={detail.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-[#78b41e] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#6aa019]"
+              className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--accent-strong)]"
             >
               View source
             </a>
@@ -120,7 +146,7 @@ export default function ListingDetailPanel({
             type="button"
             onClick={handleTranslate}
             disabled={!detail || translating || locale === "de"}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] hover:bg-[var(--mist)] disabled:cursor-not-allowed disabled:opacity-50"
             title={
               locale === "de"
                 ? "Your language is German — original text is already shown"
@@ -136,7 +162,7 @@ export default function ListingDetailPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100"
+            className="rounded-lg px-2 py-1.5 text-sm text-[var(--muted)] hover:bg-[var(--mist)]"
             aria-label="Close listing panel"
           >
             ✕
@@ -146,7 +172,7 @@ export default function ListingDetailPanel({
 
       <div className="flex-1 overflow-y-auto">
         {loading && (
-          <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+          <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
             Loading listing…
           </div>
         )}
@@ -156,7 +182,7 @@ export default function ListingDetailPanel({
         )}
 
         {translateError && (
-          <div className="mx-4 mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="mx-4 mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             {translateError}
           </div>
         )}
@@ -164,7 +190,7 @@ export default function ListingDetailPanel({
         {detail && !loading && (
           <div className="pb-8">
             {detail.images.length > 0 && (
-              <div className="relative bg-zinc-100">
+              <div className="relative bg-[var(--mist)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={detail.images[imageIndex]}
@@ -182,7 +208,7 @@ export default function ListingDetailPanel({
                             detail.images.length,
                         )
                       }
-                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 px-3 py-2 text-sm shadow"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-[var(--surface)]/90 px-3 py-2 text-sm shadow"
                     >
                       ‹
                     </button>
@@ -191,7 +217,7 @@ export default function ListingDetailPanel({
                       onClick={() =>
                         setImageIndex((i) => (i + 1) % detail.images.length)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 px-3 py-2 text-sm shadow"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-[var(--surface)]/90 px-3 py-2 text-sm shadow"
                     >
                       ›
                     </button>
@@ -202,7 +228,9 @@ export default function ListingDetailPanel({
                           type="button"
                           onClick={() => setImageIndex(index)}
                           className={`h-2 w-2 rounded-full ${
-                            index === imageIndex ? "bg-white" : "bg-white/50"
+                            index === imageIndex
+                              ? "bg-white"
+                              : "bg-white/50"
                           }`}
                           aria-label={`Image ${index + 1}`}
                         />
@@ -215,36 +243,36 @@ export default function ListingDetailPanel({
 
             <div className="space-y-5 px-5 pt-5">
               <div>
-                <h1 className="text-2xl font-bold leading-tight text-zinc-900">
+                <h1 className="text-2xl font-bold leading-tight text-[var(--ink)]">
                   {title}
                 </h1>
-                <p className="mt-1 text-sm text-zinc-600">{detail.address}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{detail.address}</p>
               </div>
 
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  {detail.monthlyCost ? (
-                    <>
-                      <p className="text-sm font-medium uppercase tracking-wide text-emerald-700">
-                        Total per month
-                      </p>
-                      <p className="text-3xl font-bold text-emerald-700">
-                        {detail.monthlyCost.totalDisplay}
-                      </p>
-                      <p className="text-sm text-zinc-500">
-                        Base rent {detail.priceDisplay}
-                        {detail.pricePerSqm ? ` · ${detail.pricePerSqm}` : ""}
-                      </p>
-                    </>
+                  <p className="text-sm font-medium uppercase tracking-wide text-[var(--muted)]">
+                    {isAllIn ? "Monthly rent (all-in)" : "Listed price"}
+                  </p>
+                  <p className="text-3xl font-bold text-[var(--ink)]">
+                    {detail.priceDisplay}
+                  </p>
+                  {showEstimate && detail.monthlyCost ? (
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      Est. total {detail.monthlyCost.totalDisplay}
+                      {detail.pricePerSqm ? ` · ${detail.pricePerSqm}` : ""}
+                    </p>
+                  ) : isAllIn ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      Usually includes utilities, electricity &amp; Wi‑Fi
+                      {detail.pricePerSqm ? ` · ${detail.pricePerSqm}` : ""}
+                    </p>
                   ) : (
-                    <>
-                      <p className="text-3xl font-bold text-zinc-900">
-                        {detail.priceDisplay}
+                    detail.pricePerSqm && (
+                      <p className="text-sm text-[var(--muted)]">
+                        {detail.pricePerSqm}
                       </p>
-                      {detail.pricePerSqm && (
-                        <p className="text-sm text-zinc-500">{detail.pricePerSqm}</p>
-                      )}
-                    </>
+                    )
                   )}
                 </div>
                 {teaser && teaser.length > 0 && (
@@ -252,7 +280,7 @@ export default function ListingDetailPanel({
                     {teaser.map((item, index) => (
                       <span
                         key={index}
-                        className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-800"
+                        className="rounded-md bg-[var(--mist)] px-3 py-1.5 text-sm font-medium text-[var(--ink)]"
                       >
                         {item.value}
                         {item.postfix ? ` ${item.postfix}` : ""}
@@ -262,18 +290,18 @@ export default function ListingDetailPanel({
                 )}
               </div>
 
-              {detail.monthlyCost && (
+              {showEstimate && detail.monthlyCost && (
                 <MonthlyCostCard summary={detail.monthlyCost} />
               )}
 
               {highlights && highlights.length > 0 && (
-                <div className="grid grid-cols-2 gap-3 rounded-xl border border-zinc-200 p-4">
+                <div className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--line)] p-4">
                   {highlights.map((item) => (
                     <div key={item.label}>
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">
+                      <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
                         {item.label}
                       </p>
-                      <p className="text-sm font-medium text-zinc-900">
+                      <p className="text-sm font-medium text-[var(--ink)]">
                         {item.value}
                       </p>
                     </div>
@@ -281,14 +309,18 @@ export default function ListingDetailPanel({
                 </div>
               )}
 
-              <CommuteToJku lat={detail.lat} lng={detail.lng} />
+              <CommuteToCampus
+                lat={detail.lat}
+                lng={detail.lng}
+                university={university}
+              />
 
               {description && (
                 <section>
-                  <h2 className="mb-2 text-lg font-semibold text-zinc-900">
+                  <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">
                     Description
                   </h2>
-                  <div className="whitespace-pre-line text-sm leading-relaxed text-zinc-700">
+                  <div className="whitespace-pre-line text-sm leading-relaxed text-[var(--ink)]/85">
                     {description}
                   </div>
                 </section>
@@ -298,16 +330,16 @@ export default function ListingDetailPanel({
                 <div className="space-y-4">
                   {sections.map((section) => (
                     <section key={section.title}>
-                      <h2 className="mb-2 text-lg font-semibold text-zinc-900">
+                      <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">
                         {section.title}
                       </h2>
                       {showTranslation && "text" in section ? (
-                        <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-700">
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--ink)]/85">
                           {(section as { text: string }).text}
                         </p>
                       ) : (
                         <div
-                          className="listing-html text-sm leading-relaxed text-zinc-700"
+                          className="listing-html text-sm leading-relaxed text-[var(--ink)]/85"
                           dangerouslySetInnerHTML={{ __html: section.html }}
                         />
                       )}
@@ -317,15 +349,15 @@ export default function ListingDetailPanel({
               )}
 
               {(detail.energy.hwb || detail.energy.fgee) && (
-                <section className="rounded-xl border border-zinc-200 p-4">
-                  <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+                <section className="rounded-xl border border-[var(--line)] p-4">
+                  <h2 className="mb-3 text-lg font-semibold text-[var(--ink)]">
                     Energy certificate
                   </h2>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     {detail.energy.hwb && (
                       <div>
-                        <p className="text-zinc-500">HWB</p>
-                        <p className="font-medium">
+                        <p className="text-[var(--muted)]">HWB</p>
+                        <p className="font-medium text-[var(--ink)]">
                           {detail.energy.hwb} kWh/m²a
                           {detail.energy.hwbClass
                             ? ` (${detail.energy.hwbClass})`
@@ -335,8 +367,8 @@ export default function ListingDetailPanel({
                     )}
                     {detail.energy.fgee && (
                       <div>
-                        <p className="text-zinc-500">fGEE</p>
-                        <p className="font-medium">
+                        <p className="text-[var(--muted)]">fGEE</p>
+                        <p className="font-medium text-[var(--ink)]">
                           {detail.energy.fgee}
                           {detail.energy.fgeeClass
                             ? ` (${detail.energy.fgeeClass})`
@@ -348,8 +380,8 @@ export default function ListingDetailPanel({
                 </section>
               )}
 
-              <section className="rounded-xl border border-zinc-200 p-4">
-                <h2 className="mb-3 text-lg font-semibold text-zinc-900">
+              <section className="rounded-xl border border-[var(--line)] p-4">
+                <h2 className="mb-3 text-lg font-semibold text-[var(--ink)]">
                   Contact
                 </h2>
                 <div className="flex gap-4">
@@ -358,12 +390,12 @@ export default function ListingDetailPanel({
                     <img
                       src={detail.organisation.logoUrl}
                       alt=""
-                      className="h-14 w-14 rounded-lg border border-zinc-200 object-contain p-1"
+                      className="h-14 w-14 rounded-lg border border-[var(--line)] object-contain p-1"
                     />
                   )}
-                  <div className="space-y-1 text-sm text-zinc-700">
+                  <div className="space-y-1 text-sm text-[var(--ink)]/85">
                     {(detail.contact.company || detail.organisation.name) && (
-                      <p className="font-semibold text-zinc-900">
+                      <p className="font-semibold text-[var(--ink)]">
                         {detail.contact.company ?? detail.organisation.name}
                       </p>
                     )}
@@ -372,7 +404,7 @@ export default function ListingDetailPanel({
                       <p>
                         <a
                           href={`tel:${detail.contact.phone}`}
-                          className="text-[#0066cc] hover:underline"
+                          className="text-[var(--link)] hover:underline"
                         >
                           {detail.contact.phone}
                         </a>
@@ -382,7 +414,7 @@ export default function ListingDetailPanel({
                       <p>
                         <a
                           href={`mailto:${detail.contact.email ?? detail.organisation.email}`}
-                          className="text-[#0066cc] hover:underline"
+                          className="text-[var(--link)] hover:underline"
                         >
                           {detail.contact.email ?? detail.organisation.email}
                         </a>
@@ -398,7 +430,7 @@ export default function ListingDetailPanel({
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#0066cc] hover:underline"
+                          className="text-[var(--link)] hover:underline"
                         >
                           {detail.contact.website}
                         </a>

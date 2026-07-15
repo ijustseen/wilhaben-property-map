@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a2330"/>
+      <stop offset="55%" stop-color="#243447"/>
+      <stop offset="100%" stop-color="#31465a"/>
+    </linearGradient>
+    <linearGradient id="river" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6ea8c9"/>
+      <stop offset="50%" stop-color="#8ebfd8"/>
+      <stop offset="100%" stop-color="#5f93b4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <g opacity="0.22" stroke="#9fb4c7" stroke-width="1">
+    <path d="M0 120 H1600 M0 220 H1600 M0 320 H1600 M0 420 H1600 M0 520 H1600 M0 620 H1600 M0 720 H1600 M0 820 H1600 M0 920 H1600"/>
+    <path d="M120 0 V1000 M220 0 V1000 M320 0 V1000 M420 0 V1000 M520 0 V1000 M620 0 V1000 M720 0 V1000 M820 0 V1000 M920 0 V1000 M1020 0 V1000 M1120 0 V1000 M1220 0 V1000 M1320 0 V1000 M1420 0 V1000 M1520 0 V1000"/>
+  </g>
+  <path d="M-40 690 C220 610, 380 780, 640 700 S980 560, 1240 640 S1480 780, 1640 720 L1640 1000 L-40 1000 Z" fill="#1c2836" opacity="0.55"/>
+  <path d="M-40 640 C260 560, 420 730, 680 650 S1020 510, 1280 590 S1520 730, 1640 670" fill="none" stroke="url(#river)" stroke-width="54" stroke-linecap="round" opacity="0.9"/>
+  <g fill="#d8e2ea" opacity="0.35">
+    <rect x="180" y="470" width="70" height="110" rx="4"/>
+    <rect x="270" y="430" width="58" height="150" rx="4"/>
+    <rect x="350" y="500" width="90" height="80" rx="4"/>
+    <rect x="470" y="450" width="64" height="130" rx="4"/>
+    <rect x="980" y="390" width="80" height="140" rx="4"/>
+    <rect x="1080" y="430" width="70" height="120" rx="4"/>
+    <rect x="1170" y="360" width="96" height="170" rx="4"/>
+    <rect x="1290" y="420" width="60" height="130" rx="4"/>
+  </g>
+  <g>
+    <circle cx="1180" cy="280" r="26" fill="#d61f3c"/>
+    <circle cx="1180" cy="280" r="10" fill="#fff"/>
+    <text x="1180" y="330" text-anchor="middle" fill="#fff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="700">JKU</text>
+  </g>
+  <g fill="#fff" opacity="0.55" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="600">
+    <text x="300" y="420">Innenstadt</text>
+    <text x="1050" y="250">Urfahr</text>
+  </g>
+</svg>

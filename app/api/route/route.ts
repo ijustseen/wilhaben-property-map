@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { JKU_LINZ } from "@/lib/jku";
 import { fetchWalkingRouteToJku } from "@/lib/routing";
+import { getUniversity } from "@/lib/universities";
 
 export async function GET(request: NextRequest) {
   const lat = Number(request.nextUrl.searchParams.get("lat"));
   const lng = Number(request.nextUrl.searchParams.get("lng"));
+  const universityId = request.nextUrl.searchParams.get("university");
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return NextResponse.json(
@@ -13,14 +14,26 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const uni = universityId
+    ? getUniversity(universityId)
+    : getUniversity("jku");
+
+  if (!uni) {
+    return NextResponse.json({ error: "Unknown university" }, { status: 400 });
+  }
+
   try {
-    const route = await fetchWalkingRouteToJku(
-      lat,
-      lng,
-      JKU_LINZ.lat,
-      JKU_LINZ.lng,
-    );
-    return NextResponse.json({ route, destination: JKU_LINZ });
+    const route = await fetchWalkingRouteToJku(lat, lng, uni.lat, uni.lng);
+    return NextResponse.json({
+      route,
+      destination: {
+        id: uni.id,
+        name: uni.name,
+        shortName: uni.shortName,
+        lat: uni.lat,
+        lng: uni.lng,
+      },
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown error";

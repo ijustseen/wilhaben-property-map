@@ -64,7 +64,7 @@ function maneuverLabel(type: string, modifier?: string, name?: string): string {
     case "depart":
       return `Head${modifier ? ` ${modifier}` : ""}${street}`;
     case "arrive":
-      return "Arrive at JKU Linz";
+      return "Arrive at campus";
     case "turn":
       return `Turn ${modifier ?? ""}${street}`.trim();
     case "continue":
