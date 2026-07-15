@@ -487,7 +487,7 @@ export function buildSearchUrl(
 async function fetchWillhabenHtml(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: FETCH_HEADERS,
-    next: { revalidate: 3600 },
+    cache: "no-store",
   });
 
   if (!response.ok) {

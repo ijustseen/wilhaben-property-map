@@ -3,6 +3,7 @@ import {
   getGoogleRedirectUri,
   isGoogleAuthConfigured,
 } from "@/lib/auth";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 import { randomBytes } from "crypto";
 
 export async function GET(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   const statePayload = Buffer.from(
     JSON.stringify({
       nonce: randomBytes(16).toString("hex"),
-      next: next?.startsWith("/") ? next : "/map/linz?university=jku",
+      next: next?.startsWith("/") ? next : MAP_ENTRY_PATH,
     }),
   ).toString("base64url");
 

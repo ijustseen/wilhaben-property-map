@@ -4,6 +4,7 @@ import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import { useFavorites } from "../components/useFavorites";
 import type { AuthUser } from "@/lib/auth";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 
 const SOURCE_LABEL = {
   apartments: "Apartment",
@@ -38,7 +39,7 @@ export default function FavoritesClient({ user }: FavoritesClientProps) {
           <div className="mt-10 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
             <p className="text-[var(--ink)]">No saved listings yet.</p>
             <Link
-              href="/map/linz?university=jku"
+              href={MAP_ENTRY_PATH}
               className="mt-4 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-strong)]"
             >
               Browse the housing map

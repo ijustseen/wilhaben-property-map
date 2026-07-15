@@ -1,6 +1,7 @@
 import SiteHeader from "../components/SiteHeader";
 import AuthForm from "../components/AuthForm";
 import { getCurrentUser } from "@/lib/auth";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 import { redirect } from "next/navigation";
 
 type LoginPageProps = {
@@ -10,7 +11,7 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const user = await getCurrentUser();
   const { next } = await searchParams;
-  if (user) redirect(next?.startsWith("/") ? next : "/map/linz?university=jku");
+  if (user) redirect(next?.startsWith("/") ? next : MAP_ENTRY_PATH);
 
   return (
     <div className="auth-shell">

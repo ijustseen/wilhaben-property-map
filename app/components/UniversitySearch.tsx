@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { getCity } from "@/lib/cities";
 import {
+  MAP_ENTRY_PATH,
   searchUniversities,
   UNIVERSITIES,
   universityMapPath,
@@ -47,8 +48,7 @@ export default function UniversitySearch() {
     event?.preventDefault();
     const q = query.trim();
     if (!q) {
-      const fallback = liveUnis[0];
-      if (fallback) router.push(universityMapPath(fallback));
+      router.push(MAP_ENTRY_PATH);
       return;
     }
     const available = matches.find((uni) => uni.status === "available");
@@ -118,9 +118,7 @@ export default function UniversitySearch() {
         >
           {hint}{" "}
           {liveUnis[0] && (
-            <Link href={universityMapPath(liveUnis[0])}>
-              Open {liveUnis[0].shortName} map
-            </Link>
+            <Link href={MAP_ENTRY_PATH}>Open housing map</Link>
           )}
         </p>
       ) : (

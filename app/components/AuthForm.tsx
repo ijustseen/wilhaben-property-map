@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useMemo, useState } from "react";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -53,7 +54,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
         throw new Error(data.error ?? "Something went wrong");
       }
       router.refresh();
-      router.push(next?.startsWith("/") ? next : "/map/linz?university=jku");
+      router.push(next?.startsWith("/") ? next : MAP_ENTRY_PATH);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {

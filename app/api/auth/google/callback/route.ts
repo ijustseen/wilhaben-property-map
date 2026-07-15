@@ -5,6 +5,7 @@ import {
   isGoogleAuthConfigured,
   upsertGoogleUser,
 } from "@/lib/auth";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 
 type GoogleTokenResponse = {
   access_token?: string;
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     return fail("google_state_mismatch");
   }
 
-  let nextPath = "/map/linz?university=jku";
+  let nextPath = MAP_ENTRY_PATH;
   try {
     const parsed = JSON.parse(
       Buffer.from(state, "base64url").toString("utf8"),

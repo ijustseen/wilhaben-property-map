@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AuthUser } from "@/lib/auth";
 import type { City } from "@/lib/cities";
 import type { AppLocale } from "@/lib/locale";
 import { BRAND_NAME } from "@/lib/brand";
-import { universityMapPath, type University } from "@/lib/universities";
+import { mapCitySearchPath } from "@/lib/map-search";
+import { MAP_ENTRY_PATH, type University } from "@/lib/universities";
 import {
   type Listing,
   type ListingDetail,
@@ -27,8 +28,10 @@ type AppShellProps = {
   initialSource: ListingSource;
   locale: AppLocale;
   city: City;
-  university: University;
+  university: University | null;
   user: AuthUser | null;
+  initialFiltersOpen?: boolean;
+  loadListingsOnMount?: boolean;
 };
 
 const SOURCE_LABEL: Record<ListingSource, string> = {
@@ -45,15 +48,18 @@ export default function AppShell({
   city: initialCity,
   university: initialUniversity,
   user,
+  initialFiltersOpen = false,
+  loadListingsOnMount = false,
 }: AppShellProps) {
   const router = useRouter();
   const city = initialCity;
+  const isOverview = city.id === "austria";
   const [university, setUniversity] = useState(initialUniversity);
   const [source, setSource] = useState<ListingSource>(initialSource);
   const [listings, setListings] = useState(initialListings);
   const [filters, setFilters] = useState<SearchFilters>(initialFilters);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [loadingListings, setLoadingListings] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(initialFiltersOpen);
+  const [loadingListings, setLoadingListings] = useState(loadListingsOnMount);
   const [listingsError, setListingsError] = useState<string | null>(null);
   const [mapLayer, setMapLayer] = useState<MapLayerId>("streets");
 
@@ -98,6 +104,12 @@ export default function AppShell({
     [],
   );
 
+  useEffect(() => {
+    if (!loadListingsOnMount || isOverview) return;
+    void loadListings(initialFilters, initialSource, city.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only city bootstrap
+  }, []);
+
   const loadDetail = useCallback(async (listing: Listing) => {
     setSelectedId(listing.id);
     setDetailLoading(true);
@@ -138,18 +150,21 @@ export default function AppShell({
     nextUniversity: University,
   ) {
     if (nextUniversity.status === "soon") {
-      // Keep current map; don't jump to unavailable city
-      void loadListings(nextFilters, nextSource, city.id);
+      if (!isOverview) {
+        void loadListings(nextFilters, nextSource, city.id);
+      }
       return;
     }
 
-    if (nextUniversity.cityId !== city.id) {
-      router.push(universityMapPath(nextUniversity));
+    const path = mapCitySearchPath(nextUniversity, nextFilters, nextSource);
+
+    if (isOverview || nextUniversity.cityId !== city.id) {
+      router.push(path);
       return;
     }
 
     setUniversity(nextUniversity);
-    router.replace(universityMapPath(nextUniversity), { scroll: false });
+    router.replace(path, { scroll: false });
     void loadListings(nextFilters, nextSource, city.id);
   }
 
@@ -175,7 +190,9 @@ export default function AppShell({
       ? "Updating…"
       : listingsError
         ? "Error"
-        : `${listings.length.toLocaleString("de-AT")} listings`;
+        : isOverview && listings.length === 0
+          ? "No listings yet"
+          : `${listings.length.toLocaleString("de-AT")} listings`;
 
   return (
     <div className="flex h-screen flex-col bg-[var(--background)]">
@@ -197,16 +214,28 @@ export default function AppShell({
             <span className="map-search-text">
               <span className="map-search-row">
                 <span className="map-search-title">
-                  {university.shortName}
-                  <span className="map-search-sep">·</span>
-                  {city.name}
+                  {university ? (
+                    <>
+                      {university.shortName}
+                      <span className="map-search-sep">·</span>
+                      {city.name}
+                    </>
+                  ) : isOverview ? (
+                    "Austria"
+                  ) : (
+                    city.name
+                  )}
                 </span>
                 <span className="map-search-count" aria-live="polite">
                   {listingsCountLabel}
                 </span>
               </span>
               <span className="map-search-sub">
-                {searchSummary || "Add rent, rooms or housing type"}
+                {isOverview
+                  ? "Choose university and filters"
+                  : university
+                    ? searchSummary || "Add rent, rooms or housing type"
+                    : "Choose a university to see campus on the map"}
               </span>
             </span>
             {activeFilterCount > 0 && (
@@ -222,7 +251,7 @@ export default function AppShell({
               ) : null}
             </Link>
             <Link
-              href={user ? "/profile" : "/login?next=/map/" + city.id}
+              href={user ? "/profile" : `/login?next=${MAP_ENTRY_PATH}`}
               className="map-chrome-avatar"
               title={user ? user.name : "Log in"}
             >
@@ -256,7 +285,7 @@ export default function AppShell({
               : "pointer-events-none translate-x-full"
           }`}
         >
-          {selectedId && (
+          {selectedId && university && (
             <ListingDetailPanel
               detail={detail}
               loading={detailLoading}

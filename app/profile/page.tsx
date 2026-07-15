@@ -4,11 +4,9 @@ import SiteHeader from "../components/SiteHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
 import { listFavorites } from "@/lib/favorites";
-import { universityMapPath, UNIVERSITIES } from "@/lib/universities";
+import { MAP_ENTRY_PATH, universityMapPath, UNIVERSITIES } from "@/lib/universities";
 
-const liveMapHref = universityMapPath(
-  UNIVERSITIES.find((u) => u.status === "available") ?? UNIVERSITIES[0],
-);
+const liveMapHref = MAP_ENTRY_PATH;
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();

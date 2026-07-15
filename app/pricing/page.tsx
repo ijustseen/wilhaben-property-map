@@ -12,7 +12,7 @@ import {
 export const metadata = {
   title: "Pricing — StudiWohnkarte Plus",
   description:
-    "Upgrade to unlimited saves, listing alerts, and exports. Pay via Lemon Squeezy.",
+    "Upgrade for listing alerts, saved searches, and PDF exports. Pay monthly via Lemon Squeezy.",
 };
 
 export default async function PricingPage() {
@@ -28,9 +28,9 @@ export default async function PricingPage() {
             Hunt smarter during flat season.
           </h1>
           <p className="landing-copy pricing-lead">
-            The map stays free for every Austrian university city. Plus adds
-            unlimited saves, email alerts, and exports when you are actively
-            applying for housing.
+            The map and unlimited saves stay free for every Austrian university
+            city. Plus adds email alerts, saved searches, and exports while you
+            are actively applying for housing.
           </p>
         </div>
 

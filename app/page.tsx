@@ -4,11 +4,10 @@ import SiteHeader from "./components/SiteHeader";
 import UniversitySearch from "./components/UniversitySearch";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
-import { universityMapPath, UNIVERSITIES } from "@/lib/universities";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const liveUni = UNIVERSITIES.find((u) => u.status === "available");
 
   return (
     <div className="landing-shell">
@@ -21,13 +20,6 @@ export default async function HomePage() {
             Pick your university — then explore apartments, WGs and dorms on a
             map of that city and the area around campus.
           </p>
-          <div className="landing-actions">
-            {liveUni && (
-              <Link href={universityMapPath(liveUni)} className="landing-cta">
-                Open housing map
-              </Link>
-            )}
-          </div>
           <UniversitySearch />
           </div>
         </section>
@@ -103,14 +95,12 @@ export default async function HomePage() {
               <li>Estimated utilities only when apartments need them</li>
               <li>Favourite sync when you create an account</li>
             </ul>
-            {liveUni && (
-              <Link
-                href={universityMapPath(liveUni)}
-                className="landing-cta landing-cta--ink"
-              >
-                Open the map
-              </Link>
-            )}
+            <Link
+              href={MAP_ENTRY_PATH}
+              className="landing-cta landing-cta--ink"
+            >
+              Open the map
+            </Link>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -129,15 +119,13 @@ export default async function HomePage() {
             Find a place before term starts.
           </h2>
           <p className="landing-copy">
-            Free to browse every Austrian university city. Sign up for saved
-            listings — upgrade to Plus for alerts and unlimited saves.
+            Free to browse every Austrian university city. Sign up to save as
+            many listings as you like — upgrade to Plus for alerts and exports.
           </p>
           <div className="landing-actions">
-            {liveUni && (
-              <Link href={universityMapPath(liveUni)} className="landing-cta">
-                Open map
-              </Link>
-            )}
+            <Link href={MAP_ENTRY_PATH} className="landing-cta">
+              Open map
+            </Link>
             <Link
               href={user ? "/profile" : "/register"}
               className="landing-cta-ghost"

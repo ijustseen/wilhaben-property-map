@@ -1,11 +1,12 @@
 import SiteHeader from "../components/SiteHeader";
 import AuthForm from "../components/AuthForm";
 import { getCurrentUser } from "@/lib/auth";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 import { redirect } from "next/navigation";
 
 export default async function RegisterPage() {
   const user = await getCurrentUser();
-  if (user) redirect("/map/linz?university=jku");
+  if (user) redirect(MAP_ENTRY_PATH);
 
   return (
     <div className="auth-shell">

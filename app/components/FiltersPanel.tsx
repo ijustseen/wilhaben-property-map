@@ -17,7 +17,7 @@ type FiltersPanelProps = {
   open: boolean;
   filters: SearchFilters;
   source: ListingSource;
-  university: University;
+  university: University | null;
   postcodeHint?: string;
   listingsCountLabel: string;
   onClose: () => void;
@@ -48,7 +48,9 @@ export default function FiltersPanel({
 }: FiltersPanelProps) {
   const [draft, setDraft] = useState<SearchFilters>(filters);
   const [draftSource, setDraftSource] = useState<ListingSource>(source);
-  const [draftUniversity, setDraftUniversity] = useState(university);
+  const [draftUniversity, setDraftUniversity] = useState<University | null>(
+    university,
+  );
   const [uniQuery, setUniQuery] = useState("");
   const [uniFocused, setUniFocused] = useState(false);
 
@@ -73,7 +75,7 @@ export default function FiltersPanel({
 
   if (!open) return null;
 
-  const draftCity = getCity(draftUniversity.cityId);
+  const draftCity = draftUniversity ? getCity(draftUniversity.cityId) : null;
 
   function toggleRoom(room: number) {
     setDraft((current) => {
@@ -85,6 +87,7 @@ export default function FiltersPanel({
   }
 
   function handleApply() {
+    if (!draftUniversity) return;
     onApply(
       {
         ...draft,
@@ -98,14 +101,14 @@ export default function FiltersPanel({
   }
 
   function handleReset() {
-    const fallback =
-      UNIVERSITIES.find((u) => u.status === "available") ?? university;
     setDraft(EMPTY_FILTERS);
     setDraftSource("apartments");
-    setDraftUniversity(fallback);
+    setDraftUniversity(university);
     setUniQuery("");
-    onApply(EMPTY_FILTERS, "apartments", fallback);
-    onClose();
+    if (university) {
+      onApply(EMPTY_FILTERS, "apartments", university);
+      onClose();
+    }
   }
 
   return (
@@ -147,9 +150,11 @@ export default function FiltersPanel({
                 value={
                   uniFocused
                     ? uniQuery
-                    : `${draftUniversity.shortName} · ${draftCity?.name ?? ""}`
+                    : draftUniversity
+                      ? `${draftUniversity.shortName} · ${draftCity?.name ?? ""}`
+                      : ""
                 }
-                placeholder="Search university…"
+                placeholder="Choose a university…"
                 onFocus={(e) => {
                   setUniFocused(true);
                   setUniQuery("");
@@ -175,7 +180,7 @@ export default function FiltersPanel({
                 ) : (
                   uniMatches.map((uni) => {
                     const city = getCity(uni.cityId);
-                    const active = uni.id === draftUniversity.id;
+                    const active = draftUniversity?.id === uni.id;
                     return (
                       <li key={uni.id}>
                         <button
@@ -212,7 +217,7 @@ export default function FiltersPanel({
               </ul>
             )}
 
-            {draftUniversity.status === "soon" && (
+            {draftUniversity?.status === "soon" && (
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
                 {draftUniversity.shortName} isn&apos;t live yet — apply will keep
                 your current city map if needed.
@@ -226,10 +231,9 @@ export default function FiltersPanel({
             </p>
             <div className="space-y-2">
               {SOURCES.map((item) => {
-                const supported = citySupportsSource(
-                  draftUniversity.cityId,
-                  item.id,
-                );
+                const supported = draftUniversity
+                  ? citySupportsSource(draftUniversity.cityId, item.id)
+                  : false;
                 const active = draftSource === item.id;
                 return (
                   <button
@@ -283,8 +287,8 @@ export default function FiltersPanel({
               }
               className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)]"
               placeholder={
-                postcodeHint
-                  ? `Optional · e.g. ${postcodeHint}`
+                (postcodeHint ?? draftCity?.postcodeHint)
+                  ? `Optional · e.g. ${postcodeHint ?? draftCity?.postcodeHint}`
                   : "Optional postal code"
               }
             />
@@ -425,7 +429,8 @@ export default function FiltersPanel({
           <button
             type="button"
             onClick={handleApply}
-            className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--accent-strong)]"
+            disabled={!draftUniversity}
+            className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Show results
           </button>

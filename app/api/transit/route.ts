@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchTransitJourneyToCampus } from "@/lib/transit";
 import { getUniversity } from "@/lib/universities";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   const lat = Number(request.nextUrl.searchParams.get("lat"));
   const lng = Number(request.nextUrl.searchParams.get("lng"));
@@ -18,9 +20,9 @@ export async function GET(request: NextRequest) {
 
   const uni = universityId ? getUniversity(universityId) : undefined;
   const destination = uni
-    ? { lat: uni.lat, lng: uni.lng }
+    ? { lat: uni.lat, lng: uni.lng, cityId: uni.cityId }
     : Number.isFinite(toLat) && Number.isFinite(toLng)
-      ? { lat: toLat, lng: toLng }
+      ? { lat: toLat, lng: toLng, cityId: "austria" }
       : null;
 
   if (!destination) {
@@ -35,8 +37,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       journey,
       destination: uni
-        ? { id: uni.id, name: uni.name, shortName: uni.shortName, ...destination }
-        : destination,
+        ? {
+            id: uni.id,
+            name: uni.name,
+            shortName: uni.shortName,
+            lat: destination.lat,
+            lng: destination.lng,
+          }
+        : { lat: destination.lat, lng: destination.lng },
     });
   } catch (error) {
     const message =

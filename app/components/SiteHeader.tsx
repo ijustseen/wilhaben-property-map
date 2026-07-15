@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { AuthUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
-import { universityMapPath, UNIVERSITIES } from "@/lib/universities";
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 
-const liveMapHref =
-  universityMapPath(
-    UNIVERSITIES.find((u) => u.status === "available") ?? UNIVERSITIES[0],
-  );
+const liveMapHref = MAP_ENTRY_PATH;
 
 type SiteHeaderProps = {
   user: AuthUser | null;

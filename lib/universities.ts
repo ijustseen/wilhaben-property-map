@@ -59,6 +59,9 @@ export function universityMapPath(uni: University): string {
   return `/map/${uni.cityId}?university=${uni.id}`;
 }
 
+/** Neutral map entry — empty Austria view with filters open */
+export const MAP_ENTRY_PATH = "/map";
+
 export function googleMapsDirectionsToUniversity(
   uni: University,
   fromLat: number,

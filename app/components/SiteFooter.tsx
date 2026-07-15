@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { BRAND_NAME, BRAND_TAGLINE, GITHUB_URL } from "@/lib/brand";
-import { universityMapPath, UNIVERSITIES } from "@/lib/universities";
-
-const liveUni = UNIVERSITIES.find((u) => u.status === "available");
+import { MAP_ENTRY_PATH } from "@/lib/universities";
 
 export default function SiteFooter() {
   return (
@@ -20,9 +18,7 @@ export default function SiteFooter() {
             <h3>Product</h3>
             <ul>
               <li>
-                <Link href={liveUni ? universityMapPath(liveUni) : "/"}>
-                  Housing map
-                </Link>
+                <Link href={MAP_ENTRY_PATH}>Housing map</Link>
               </li>
               <li>
                 <Link href="/pricing">StudiWohnkarte Plus</Link>

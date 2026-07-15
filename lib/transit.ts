@@ -1,6 +1,8 @@
 import type { University } from "./universities";
+import { fetchOebbTransitJourney } from "./transit-oebb";
 
 const EFA_BASE = "https://www.linzag.at/static/XSLT_TRIP_REQUEST2";
+const LINZ_CITY_ID = "linz";
 
 export type TransitLeg = {
   type: "walk" | "tram" | "bus" | "transit";
@@ -108,6 +110,18 @@ export function formatTransitSteps(legs: TransitLeg[]): string[] {
 export async function fetchTransitJourneyToCampus(
   fromLat: number,
   fromLng: number,
+  destination: Pick<University, "lat" | "lng" | "cityId">,
+): Promise<TransitJourney> {
+  if (destination.cityId !== LINZ_CITY_ID) {
+    return fetchOebbTransitJourney(fromLat, fromLng, destination);
+  }
+
+  return fetchLinzEfaTransitJourney(fromLat, fromLng, destination);
+}
+
+async function fetchLinzEfaTransitJourney(
+  fromLat: number,
+  fromLng: number,
   destination: Pick<University, "lat" | "lng">,
 ): Promise<TransitJourney> {
   const params = new URLSearchParams({
@@ -126,7 +140,7 @@ export async function fetchTransitJourneyToCampus(
   });
 
   const response = await fetch(`${EFA_BASE}?${params.toString()}`, {
-    next: { revalidate: 3600 },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -137,9 +151,12 @@ export async function fetchTransitJourneyToCampus(
   const journey = data.journeys?.[0];
 
   if (!journey?.legs?.length) {
-    const message =
+    const rawMessage =
       data.systemMessages?.map((item) => item.text).filter(Boolean).join(", ") ||
       "No public transport route found";
+    const message = rawMessage.includes("itp")
+      ? "No public transport route found"
+      : rawMessage;
     throw new Error(message);
   }
 
@@ -165,5 +182,6 @@ export async function fetchTransitJourneyToJku(
   return fetchTransitJourneyToCampus(fromLat, fromLng, {
     lat: 48.3384,
     lng: 14.3212,
+    cityId: LINZ_CITY_ID,
   });
 }

@@ -3,12 +3,11 @@ import { notFound } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import { getCurrentUser } from "@/lib/auth";
 import { getCity } from "@/lib/cities";
+import { mapStateFromCitySearchParams } from "@/lib/map-search";
 import {
-  getDefaultUniversityForCity,
   getUniversity,
   getUniversitiesForCity,
 } from "@/lib/universities";
-import { EMPTY_FILTERS, fetchListings, type Listing } from "@/lib/willhaben";
 import {
   LOCALE_COOKIE,
   detectLocale,
@@ -16,11 +15,9 @@ import {
   type AppLocale,
 } from "@/lib/locale";
 
-export const revalidate = 3600;
-
 type PageProps = {
   params: Promise<{ city: string }>;
-  searchParams: Promise<{ university?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function getLocale(): Promise<AppLocale> {
@@ -36,7 +33,12 @@ async function getLocale(): Promise<AppLocale> {
 
 export default async function CityMapPage({ params, searchParams }: PageProps) {
   const { city: cityId } = await params;
-  const { university: universityParam } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const universityParam =
+    typeof resolvedSearchParams.university === "string"
+      ? resolvedSearchParams.university
+      : undefined;
+  const { filters, source } = mapStateFromCitySearchParams(resolvedSearchParams);
   const city = getCity(cityId);
   if (!city || city.status !== "available") {
     notFound();
@@ -48,13 +50,12 @@ export default async function CityMapPage({ params, searchParams }: PageProps) {
   const university =
     requested && requested.cityId === city.id && requested.status === "available"
       ? requested
-      : getDefaultUniversityForCity(city.id);
+      : null;
 
-  if (!university) {
+  if (universityParam && !university) {
     notFound();
   }
 
-  // Ensure at least one live uni exists for this city
   if (
     getUniversitiesForCity(city.id).every((u) => u.status !== "available")
   ) {
@@ -62,23 +63,17 @@ export default async function CityMapPage({ params, searchParams }: PageProps) {
   }
 
   const [locale, user] = await Promise.all([getLocale(), getCurrentUser()]);
-  let listings: Listing[] = [];
-
-  try {
-    listings = await fetchListings(EMPTY_FILTERS, cityId);
-  } catch {
-    listings = [];
-  }
 
   return (
     <AppShell
-      initialListings={listings}
-      initialFilters={EMPTY_FILTERS}
-      initialSource="apartments"
+      initialListings={[]}
+      initialFilters={filters}
+      initialSource={source}
       locale={locale}
       city={city}
       university={university}
       user={user}
+      loadListingsOnMount
     />
   );
 }

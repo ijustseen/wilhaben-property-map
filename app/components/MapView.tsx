@@ -21,7 +21,7 @@ type MapViewProps = {
   loading?: boolean;
   mapLayer: MapLayerId;
   city: City;
-  university: University;
+  university: University | null;
   onMapLayerChange: (layer: MapLayerId) => void;
   onSelect: (listing: Listing) => void;
 };
@@ -38,11 +38,7 @@ export default function MapView({
 }: MapViewProps) {
   return (
     <div className="relative h-full w-full">
-      <div
-        className={`h-full w-full transition-opacity duration-300 ${
-          loading ? "pointer-events-none opacity-40" : "opacity-100"
-        }`}
-      >
+      <div className="h-full w-full">
         <RentalMap
           listings={listings}
           selectedId={selectedId}

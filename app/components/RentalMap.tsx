@@ -58,7 +58,7 @@ type RentalMapProps = {
   selectedId: string | null;
   mapLayer: MapLayerId;
   city: City;
-  university: University;
+  university: University | null;
   onSelect: (listing: Listing) => void;
 };
 
@@ -129,7 +129,7 @@ function MapViewport({
   listings: Listing[];
   selectedId: string | null;
   routeGeometry: [number, number][];
-  university: University;
+  university: University | null;
   city: City;
 }) {
   const map = useMap();
@@ -139,10 +139,35 @@ function MapViewport({
   }, [map]);
 
   useEffect(() => {
+    if (!university) {
+      if (city.id === "austria") {
+        map.fitBounds(AUSTRIA_MAP_BOUNDS, {
+          padding: [32, 32],
+          maxZoom: 8,
+          animate: false,
+        });
+      } else {
+        map.flyTo([city.center.lat, city.center.lng], city.defaultZoom, {
+          duration: 0.7,
+        });
+      }
+      return;
+    }
+
     map.flyTo([university.lat, university.lng], Math.max(city.defaultZoom, 14), {
       duration: 0.7,
     });
-  }, [university.id, university.lat, university.lng, city.defaultZoom, map]);
+  }, [
+    university,
+    university?.id,
+    university?.lat,
+    university?.lng,
+    city.id,
+    city.center.lat,
+    city.center.lng,
+    city.defaultZoom,
+    map,
+  ]);
 
   useEffect(() => {
     if (routeGeometry.length > 1) {
@@ -183,12 +208,12 @@ export default function RentalMap({
   const layer = MAP_LAYERS[mapLayer];
   const createIcon = useMemo(() => createListingIcon, []);
   const campusIcon = useMemo(
-    () => createCampusIcon(university.shortName),
-    [university.shortName],
+    () => (university ? createCampusIcon(university.shortName) : null),
+    [university],
   );
 
   useEffect(() => {
-    if (!selected) {
+    if (!selected || !university) {
       setRouteGeometry([]);
       return;
     }
@@ -211,7 +236,7 @@ export default function RentalMap({
     return () => {
       cancelled = true;
     };
-  }, [selected, university.id]);
+  }, [selected, university?.id]);
 
   return (
     <MapContainer
@@ -237,7 +262,7 @@ export default function RentalMap({
         city={city}
       />
 
-      {university.campusPolygon && university.campusPolygon.length > 2 && (
+      {university?.campusPolygon && university.campusPolygon.length > 2 && (
         <Polygon
           key={`${university.id}-poly`}
           positions={university.campusPolygon}
@@ -256,16 +281,18 @@ export default function RentalMap({
         </Polygon>
       )}
 
-      <Marker
-        key={`${university.id}-marker`}
-        position={[university.lat, university.lng]}
-        icon={campusIcon}
-        zIndexOffset={1000}
-      >
-        <Tooltip direction="top" offset={[0, -16]} opacity={1}>
-          <span className="text-sm font-medium">{university.name}</span>
-        </Tooltip>
-      </Marker>
+      {university && campusIcon && (
+        <Marker
+          key={`${university.id}-marker`}
+          position={[university.lat, university.lng]}
+          icon={campusIcon}
+          zIndexOffset={1000}
+        >
+          <Tooltip direction="top" offset={[0, -16]} opacity={1}>
+            <span className="text-sm font-medium">{university.name}</span>
+          </Tooltip>
+        </Marker>
+      )}
 
       {routeGeometry.length > 1 && (
         <Polyline

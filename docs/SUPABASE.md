@@ -103,7 +103,7 @@ SUPABASE_SERVICE_ROLE_KEY=   # только server / webhooks
 
 ## Лимиты Free tier
 
-- Free: max 10 favourites (проверка в API)
-- Plus: unlimited + `saved_searches`
+- Free: unlimited favourites (with account)
+- Plus: `saved_searches`, alerts, export
 
-Реализация Plus-лимитов — после webhook; карта остаётся бесплатной.
+Реализация Plus-фич — после webhook; карта и избранное остаются бесплатными.

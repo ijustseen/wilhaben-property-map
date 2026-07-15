@@ -169,6 +169,23 @@ export function getCity(id: string): City | undefined {
   return CITIES.find((city) => city.id === id);
 }
 
+/** Austria-wide map entry — not a searchable willhaben city */
+export const AUSTRIA_OVERVIEW_CITY: City = {
+  id: "austria",
+  name: "Austria",
+  country: "Austria",
+  status: "available",
+  blurb: "Pick a university to explore student housing in that city.",
+  highlight: "All cities",
+  center: { lat: 47.75, lng: 13.4 },
+  defaultZoom: 7,
+  willhabenPath: "mietwohnung-angebote",
+};
+
+export function getAustriaOverviewCity(): City {
+  return AUSTRIA_OVERVIEW_CITY;
+}
+
 export function getWillhabenSearchBase(cityId: string): string {
   const city = getCity(cityId);
   if (!city) {
