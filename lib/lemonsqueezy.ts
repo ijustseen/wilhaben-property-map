@@ -120,20 +120,49 @@ export async function syncProfilePlan(input: {
 
     if (error) return { updated: false, reason: error.message };
     if (data) return { updated: true };
+
+    const appPatch = {
+      plan: input.plan,
+      lemon_subscription_id:
+        input.plan === "plus" ? input.subscriptionId : null,
+    };
+    const { data: appById, error: appByIdError } = await admin
+      .from("app_users")
+      .update(appPatch)
+      .eq("id", input.userId)
+      .select("id")
+      .maybeSingle();
+
+    if (appByIdError) return { updated: false, reason: appByIdError.message };
+    if (appById) return { updated: true };
   }
 
   if (!input.email) {
     return { updated: false, reason: "missing_user_reference" };
   }
 
-  const { data, error } = await admin
+  const { data: profileData, error: profileError } = await admin
     .from("profiles")
     .update(patch)
     .eq("email", input.email)
     .select("id")
     .maybeSingle();
 
-  if (error) return { updated: false, reason: error.message };
-  if (!data) return { updated: false, reason: "profile_not_found" };
+  if (profileError) return { updated: false, reason: profileError.message };
+  if (profileData) return { updated: true };
+
+  const appPatch = {
+    plan: input.plan,
+    lemon_subscription_id: input.plan === "plus" ? input.subscriptionId : null,
+  };
+  const { data: appData, error: appError } = await admin
+    .from("app_users")
+    .update(appPatch)
+    .eq("email", input.email)
+    .select("id")
+    .maybeSingle();
+
+  if (appError) return { updated: false, reason: appError.message };
+  if (!appData) return { updated: false, reason: "profile_not_found" };
   return { updated: true };
 }

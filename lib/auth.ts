@@ -1,7 +1,12 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { promises as fs } from "fs";
-import path from "path";
+import {
+  createPasswordUser,
+  findUserById,
+  findUserByEmail,
+  upsertGoogleUserRecord,
+  type StoredUser,
+} from "@/lib/user-store";
 
 export type AuthUser = {
   id: string;
@@ -11,44 +16,13 @@ export type AuthUser = {
   provider: "password" | "google";
 };
 
-type StoredUser = AuthUser & {
-  passwordHash?: string;
-  passwordSalt?: string;
-  googleId?: string;
-};
-
-type UserStore = {
-  users: StoredUser[];
-};
-
 const SESSION_COOKIE = "campus_map_session";
-const DATA_DIR = path.join(process.cwd(), "data");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
 
 function authSecret(): string {
   return (
     process.env.AUTH_SECRET ??
     "dev-only-campus-map-secret-change-me-in-production"
   );
-}
-
-async function ensureStore(): Promise<UserStore> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    const raw = await fs.readFile(USERS_FILE, "utf8");
-    const parsed = JSON.parse(raw) as UserStore;
-    if (!Array.isArray(parsed.users)) return { users: [] };
-    return parsed;
-  } catch {
-    const empty: UserStore = { users: [] };
-    await fs.writeFile(USERS_FILE, JSON.stringify(empty, null, 2), "utf8");
-    return empty;
-  }
-}
-
-async function saveStore(store: UserStore): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(USERS_FILE, JSON.stringify(store, null, 2), "utf8");
 }
 
 function hashPassword(password: string, salt: string): string {
@@ -116,24 +90,13 @@ export async function registerUser(input: {
     throw new Error("Password must be at least 8 characters");
   }
 
-  const store = await ensureStore();
-  if (store.users.some((user) => user.email === email)) {
-    throw new Error("An account with this email already exists");
-  }
-
   const salt = randomBytes(16).toString("hex");
-  const user: StoredUser = {
-    id: randomBytes(12).toString("hex"),
+  const user = await createPasswordUser({
     email,
     name,
-    createdAt: new Date().toISOString(),
-    provider: "password",
     passwordSalt: salt,
     passwordHash: hashPassword(input.password, salt),
-  };
-
-  store.users.push(user);
-  await saveStore(store);
+  });
   return publicUser(user);
 }
 
@@ -142,8 +105,7 @@ export async function authenticateUser(
   password: string,
 ): Promise<AuthUser> {
   const email = emailInput.trim().toLowerCase();
-  const store = await ensureStore();
-  const user = store.users.find((item) => item.email === email);
+  const user = await findUserByEmail(email);
   if (!user || !user.passwordHash || !user.passwordSalt) {
     throw new Error("Invalid email or password");
   }
@@ -158,11 +120,7 @@ export async function authenticateUser(
   return publicUser(user);
 }
 
-export async function findUserById(id: string): Promise<AuthUser | null> {
-  const store = await ensureStore();
-  const user = store.users.find((item) => item.id === id);
-  return user ? publicUser(user) : null;
-}
+export { findUserById };
 
 export async function createSessionCookie(userId: string): Promise<void> {
   const jar = await cookies();
@@ -191,35 +149,11 @@ export async function upsertGoogleUser(input: {
     throw new Error("Google account is missing an email");
   }
 
-  const store = await ensureStore();
-  const byGoogle = store.users.find((user) => user.googleId === input.googleId);
-  if (byGoogle) {
-    byGoogle.name = name;
-    byGoogle.email = email;
-    byGoogle.provider = "google";
-    await saveStore(store);
-    return publicUser(byGoogle);
-  }
-
-  const byEmail = store.users.find((user) => user.email === email);
-  if (byEmail) {
-    byEmail.googleId = input.googleId;
-    byEmail.provider = byEmail.passwordHash ? byEmail.provider : "google";
-    byEmail.name = name;
-    await saveStore(store);
-    return publicUser(byEmail);
-  }
-
-  const user: StoredUser = {
-    id: randomBytes(12).toString("hex"),
+  const user = await upsertGoogleUserRecord({
+    googleId: input.googleId,
     email,
     name,
-    createdAt: new Date().toISOString(),
-    provider: "google",
-    googleId: input.googleId,
-  };
-  store.users.push(user);
-  await saveStore(store);
+  });
   return publicUser(user);
 }
 
@@ -242,5 +176,6 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   if (!token) return null;
   const session = readSessionToken(token);
   if (!session) return null;
-  return findUserById(session.sub);
+  const user = await findUserById(session.sub);
+  return user ? publicUser(user) : null;
 }

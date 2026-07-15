@@ -86,7 +86,7 @@ create policy "saved_searches: own rows" on public.saved_searches
 ## План миграции (по шагам)
 
 1. **Supabase project** → скопировать `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` в Vercel.
-2. Выполнить SQL из `supabase/migrations/001_initial.sql`.
+2. Выполнить SQL из `supabase/migrations/001_initial.sql` и **`002_app_users.sql`** (обязательно для auth на Vercel).
 3. Google OAuth в Supabase Dashboard (те же redirect URLs, что сейчас).
 4. Заменить `lib/auth.ts` на `@supabase/ssr` (`lib/supabase/server.ts`, `lib/supabase/client.ts`).
 5. Переписать `/api/favorites` на Postgres.
