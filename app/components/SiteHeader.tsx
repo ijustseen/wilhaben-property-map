@@ -66,9 +66,6 @@ export default function SiteHeader({
         <Link href="/favorites" className="site-header-link">
           Saved
         </Link>
-        <Link href="/pricing" className="site-header-link">
-          Plus
-        </Link>
         {user ? (
           <>
             <Link href="/profile" className="site-header-link">

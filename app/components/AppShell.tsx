@@ -110,6 +110,15 @@ export default function AppShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only city bootstrap
   }, []);
 
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFiltersOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [filtersOpen]);
+
   const loadDetail = useCallback(async (listing: Listing) => {
     setSelectedId(listing.id);
     setDetailLoading(true);
@@ -196,52 +205,126 @@ export default function AppShell({
 
   return (
     <div className="flex h-screen flex-col bg-[var(--background)]">
-      <header className="map-chrome z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
+      <header
+        className={`map-chrome z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur${filtersOpen ? " map-chrome--filters-open" : ""}`}
+      >
         <div className="map-chrome-inner">
           <Link href="/" className="map-chrome-brand" title="Home">
             {BRAND_NAME}
           </Link>
 
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            className="map-search"
-            aria-label="Open search and filters"
+          <div
+            className={`map-search-host${filtersOpen ? " map-search-host--open" : ""}`}
           >
-            <span className="map-search-icon" aria-hidden>
-              ⌕
-            </span>
-            <span className="map-search-text">
-              <span className="map-search-row">
-                <span className="map-search-title">
-                  {university ? (
-                    <>
-                      {university.shortName}
-                      <span className="map-search-sep">·</span>
-                      {city.name}
-                    </>
-                  ) : isOverview ? (
-                    "Austria"
-                  ) : (
-                    city.name
-                  )}
+            <div
+              className={`map-search-shell${filtersOpen ? " map-search-shell--open" : ""}`}
+            >
+              <div
+                role={filtersOpen ? undefined : "button"}
+                tabIndex={filtersOpen ? -1 : 0}
+                onClick={filtersOpen ? undefined : () => setFiltersOpen(true)}
+                onKeyDown={
+                  filtersOpen
+                    ? undefined
+                    : (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setFiltersOpen(true);
+                        }
+                      }
+                }
+                className={`map-search${filtersOpen ? " map-search--open" : ""}`}
+                aria-label={
+                  filtersOpen ? "Search and filters" : "Open search and filters"
+                }
+                aria-expanded={filtersOpen}
+              >
+                <span className="map-search-icon" aria-hidden>
+                  ⌕
+                </span>
+                <span className="map-search-text">
+                  <span className="map-search-title">
+                    {university ? (
+                      <>
+                        {university.shortName}
+                        <span className="map-search-sep">·</span>
+                        {city.name}
+                      </>
+                    ) : isOverview ? (
+                      "Austria"
+                    ) : (
+                      city.name
+                    )}
+                  </span>
+                  <span className="map-search-sub">
+                    {isOverview
+                      ? "Choose university and filters"
+                      : university
+                        ? searchSummary || "Add rent, rooms or housing type"
+                        : "Choose a university to see campus on the map"}
+                  </span>
                 </span>
                 <span className="map-search-count" aria-live="polite">
                   {listingsCountLabel}
                 </span>
-              </span>
-              <span className="map-search-sub">
-                {isOverview
-                  ? "Choose university and filters"
-                  : university
-                    ? searchSummary || "Add rent, rooms or housing type"
-                    : "Choose a university to see campus on the map"}
-              </span>
-            </span>
-            {activeFilterCount > 0 && (
-              <span className="map-search-badge">{activeFilterCount}</span>
-            )}
-          </button>
+                {filtersOpen ? (
+                  <button
+                    type="button"
+                    className="map-search-filter-icon"
+                    aria-label="Close filters"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFiltersOpen(false);
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M6 6l12 12M18 6L6 18"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                ) : (
+                  <span className="map-search-filter-icon" aria-hidden>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M4 7h16M7 12h10M10 17h4"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                )}
+                {activeFilterCount > 0 && (
+                  <span className="map-search-badge">{activeFilterCount}</span>
+                )}
+              </div>
+
+              <div
+                className="map-search-expand"
+                aria-hidden={!filtersOpen}
+              >
+                <div className="map-search-expand-inner">
+                  {filtersOpen && (
+                    <FiltersPanel
+                      variant="embedded"
+                      open={filtersOpen}
+                      filters={filters}
+                      source={source}
+                      university={university}
+                      postcodeHint={city.postcodeHint}
+                      listingsCountLabel={listingsCountLabel}
+                      onClose={() => setFiltersOpen(false)}
+                      onApply={handleApply}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="map-chrome-actions">
             <Link href="/favorites" className="map-chrome-icon-btn" title="Saved">
@@ -316,16 +399,14 @@ export default function AppShell({
         </div>
       </main>
 
-      <FiltersPanel
-        open={filtersOpen}
-        filters={filters}
-        source={source}
-        university={university}
-        postcodeHint={city.postcodeHint}
-        listingsCountLabel={listingsCountLabel}
-        onClose={() => setFiltersOpen(false)}
-        onApply={handleApply}
-      />
+      {filtersOpen && (
+        <button
+          type="button"
+          className="map-filters-backdrop"
+          aria-label="Close filters"
+          onClick={() => setFiltersOpen(false)}
+        />
+      )}
     </div>
   );
 }

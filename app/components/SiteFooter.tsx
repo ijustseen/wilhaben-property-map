@@ -10,7 +10,7 @@ export default function SiteFooter() {
           <Link href="/" className="site-footer-logo">
             {BRAND_NAME}
           </Link>
-          <p>{BRAND_TAGLINE} — maps free; Plus adds alerts &amp; exports.</p>
+          <p>{BRAND_TAGLINE} — free housing maps for students in Austria.</p>
         </div>
 
         <div className="site-footer-cols">
@@ -19,9 +19,6 @@ export default function SiteFooter() {
             <ul>
               <li>
                 <Link href={MAP_ENTRY_PATH}>Housing map</Link>
-              </li>
-              <li>
-                <Link href="/pricing">StudiWohnkarte Plus</Link>
               </li>
               <li>
                 <Link href="/favorites">Saved listings</Link>

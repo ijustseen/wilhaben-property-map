@@ -26,6 +26,8 @@ type FiltersPanelProps = {
     source: ListingSource,
     university: University,
   ) => void;
+  /** Renders body + footer only, for the expanding map search shell */
+  variant?: "modal" | "embedded";
 };
 
 const ROOM_OPTIONS = [1, 2, 3, 4, 5];
@@ -45,6 +47,7 @@ export default function FiltersPanel({
   listingsCountLabel,
   onClose,
   onApply,
+  variant = "modal",
 }: FiltersPanelProps) {
   const [draft, setDraft] = useState<SearchFilters>(filters);
   const [draftSource, setDraftSource] = useState<ListingSource>(source);
@@ -111,35 +114,9 @@ export default function FiltersPanel({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[5000] flex justify-end">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/40"
-        aria-label="Close filters"
-        onClick={onClose}
-      />
-      <aside className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[var(--line)] bg-[var(--surface)] shadow-2xl">
-        <div className="filters-panel-head">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--ink)]">Search</h2>
-            <p className="text-xs text-[var(--muted)]">
-              University, housing type and rent
-            </p>
-          </div>
-          <p className="filters-panel-count" aria-live="polite">
-            {listingsCountLabel}
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--mist)]"
-          >
-            Close
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+  const formBody = (
+    <>
+        <div className="filters-panel-body flex-1 space-y-6 overflow-y-auto px-5 py-5">
           <div>
             <label className="mb-2 block text-sm font-medium text-[var(--ink)]">
               University
@@ -418,7 +395,7 @@ export default function FiltersPanel({
           </div>
         </div>
 
-        <div className="flex gap-3 border-t border-[var(--line)] px-5 py-4">
+        <div className="filters-panel-footer flex gap-3 border-t border-[var(--line)] px-5 py-4">
           <button
             type="button"
             onClick={handleReset}
@@ -435,6 +412,41 @@ export default function FiltersPanel({
             Show results
           </button>
         </div>
+    </>
+  );
+
+  if (variant === "embedded") {
+    return formBody;
+  }
+
+  return (
+    <div className="filters-panel-root">
+      <button
+        type="button"
+        className="filters-panel-backdrop"
+        aria-label="Close filters"
+        onClick={onClose}
+      />
+      <aside className="filters-panel-sheet">
+        <div className="filters-panel-head">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--ink)]">Search</h2>
+            <p className="text-xs text-[var(--muted)]">
+              University, housing type and rent
+            </p>
+          </div>
+          <p className="filters-panel-count" aria-live="polite">
+            {listingsCountLabel}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-2 py-1 text-sm text-[var(--muted)] hover:bg-[var(--mist)]"
+          >
+            Close
+          </button>
+        </div>
+        {formBody}
       </aside>
     </div>
   );

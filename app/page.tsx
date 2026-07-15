@@ -119,8 +119,8 @@ export default async function HomePage() {
             Find a place before term starts.
           </h2>
           <p className="landing-copy">
-            Free to browse every Austrian university city. Sign up to save as
-            many listings as you like — upgrade to Plus for alerts and exports.
+            Free to browse every Austrian university city. Create an account to
+            save listings and sync them across devices.
           </p>
           <div className="landing-actions">
             <Link href={MAP_ENTRY_PATH} className="landing-cta">
@@ -131,9 +131,6 @@ export default async function HomePage() {
               className="landing-cta-ghost"
             >
               {user ? "Your profile" : "Create free account"}
-            </Link>
-            <Link href="/pricing" className="landing-cta-ghost">
-              StudiWohnkarte Plus
             </Link>
           </div>
         </div>
