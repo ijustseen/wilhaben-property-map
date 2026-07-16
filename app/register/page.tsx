@@ -1,8 +1,17 @@
 import SiteHeader from "../components/SiteHeader";
 import AuthForm from "../components/AuthForm";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
+import { pageMetadata } from "@/lib/seo";
 import { MAP_ENTRY_PATH } from "@/lib/universities";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Create account",
+  description: "Register for StudiWohnkarte to save listings across devices.",
+  path: "/register",
+  noIndex: true,
+});
 
 export default async function RegisterPage() {
   const user = await getCurrentUser();

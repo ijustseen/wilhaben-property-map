@@ -38,11 +38,16 @@ export default function ListingMarkerCluster({
       },
     });
 
+    const selectedListing = selectedId
+      ? listings.find((listing) => listing.id === selectedId)
+      : undefined;
+
     for (const listing of listings) {
-      const isSelected = listing.id === selectedId;
+      if (listing.id === selectedId) continue;
+
       const marker = L.marker([listing.lat, listing.lng], {
-        icon: createIcon(listing, isSelected),
-        zIndexOffset: isSelected ? 500 : 0,
+        icon: createIcon(listing, false),
+        zIndexOffset: 0,
         riseOnHover: true,
       });
 
@@ -51,14 +56,28 @@ export default function ListingMarkerCluster({
         marker.setZIndexOffset(800);
       });
       marker.on("mouseout", () => {
-        marker.setZIndexOffset(isSelected ? 500 : 0);
+        marker.setZIndexOffset(0);
       });
       clusterGroup.addLayer(marker);
+    }
+
+    let selectedMarker: L.Marker | null = null;
+    if (selectedListing) {
+      selectedMarker = L.marker([selectedListing.lat, selectedListing.lng], {
+        icon: createIcon(selectedListing, true),
+        zIndexOffset: 2000,
+        riseOnHover: true,
+      });
+      selectedMarker.on("click", () => onSelect(selectedListing));
+      map.addLayer(selectedMarker);
     }
 
     map.addLayer(clusterGroup);
 
     return () => {
+      if (selectedMarker) {
+        map.removeLayer(selectedMarker);
+      }
       map.removeLayer(clusterGroup);
       clusterGroup.clearLayers();
     };

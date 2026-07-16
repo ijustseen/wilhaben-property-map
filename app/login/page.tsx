@@ -1,12 +1,21 @@
 import SiteHeader from "../components/SiteHeader";
 import AuthForm from "../components/AuthForm";
+import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
+import { pageMetadata } from "@/lib/seo";
 import { MAP_ENTRY_PATH } from "@/lib/universities";
 import { redirect } from "next/navigation";
 
 type LoginPageProps = {
   searchParams: Promise<{ next?: string }>;
 };
+
+export const metadata: Metadata = pageMetadata({
+  title: "Log in",
+  description: "Sign in to StudiWohnkarte to sync saved listings.",
+  path: "/login",
+  noIndex: true,
+});
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const user = await getCurrentUser();

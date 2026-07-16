@@ -18,6 +18,8 @@ const RentalMap = dynamic(() => import("./RentalMap"), {
 type MapViewProps = {
   listings: Listing[];
   selectedId: string | null;
+  flyToCoords?: { lat: number; lng: number } | null;
+  layoutSplit?: boolean;
   loading?: boolean;
   mapLayer: MapLayerId;
   city: City;
@@ -29,6 +31,8 @@ type MapViewProps = {
 export default function MapView({
   listings,
   selectedId,
+  flyToCoords = null,
+  layoutSplit = false,
   loading = false,
   mapLayer,
   city,
@@ -42,6 +46,8 @@ export default function MapView({
         <RentalMap
           listings={listings}
           selectedId={selectedId}
+          flyToCoords={flyToCoords}
+          layoutSplit={layoutSplit}
           mapLayer={mapLayer}
           city={city}
           university={university}

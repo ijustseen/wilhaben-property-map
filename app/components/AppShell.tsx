@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "@/lib/auth";
 import type { City } from "@/lib/cities";
 import type { AppLocale } from "@/lib/locale";
 import { BRAND_NAME } from "@/lib/brand";
-import { mapCitySearchPath } from "@/lib/map-search";
+import { mapCitySearchPath, type FocusListing } from "@/lib/map-search";
 import { MAP_ENTRY_PATH, type University } from "@/lib/universities";
 import {
   type Listing,
@@ -32,6 +32,7 @@ type AppShellProps = {
   user: AuthUser | null;
   initialFiltersOpen?: boolean;
   loadListingsOnMount?: boolean;
+  initialFocusListing?: FocusListing | null;
 };
 
 const SOURCE_LABEL: Record<ListingSource, string> = {
@@ -50,6 +51,7 @@ export default function AppShell({
   user,
   initialFiltersOpen = false,
   loadListingsOnMount = false,
+  initialFocusListing = null,
 }: AppShellProps) {
   const router = useRouter();
   const city = initialCity;
@@ -70,11 +72,43 @@ export default function AppShell({
 
   const { favorites, isFavorite, toggleFavorite } = useFavorites(Boolean(user));
 
+  const fetchListingDetail = useCallback(
+    async (id: string, listingSource: ListingSource, url?: string) => {
+      setSelectedId(id);
+      setDetailLoading(true);
+      setDetailError(null);
+
+      try {
+        const params = new URLSearchParams({ source: listingSource });
+        if (listingSource === "shared" && url) {
+          params.set("url", url);
+        }
+        const response = await fetch(
+          `/api/listings/${id}?${params.toString()}`,
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Failed to load listing");
+        }
+        setDetail(data.detail);
+      } catch (e) {
+        setDetail(null);
+        setDetailError(
+          e instanceof Error ? e.message : "Failed to load listing",
+        );
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [],
+  );
+
   const loadListings = useCallback(
     async (
       nextFilters: SearchFilters,
       nextSource: ListingSource,
       nextCityId: string,
+      options?: { keepSelection?: boolean },
     ) => {
       setLoadingListings(true);
       setListingsError(null);
@@ -91,8 +125,10 @@ export default function AppShell({
         setListings(data.listings);
         setFilters(nextFilters);
         setSource(nextSource);
-        setSelectedId(null);
-        setDetail(null);
+        if (!options?.keepSelection) {
+          setSelectedId(null);
+          setDetail(null);
+        }
       } catch (e) {
         setListingsError(
           e instanceof Error ? e.message : "Failed to load listings",
@@ -106,8 +142,61 @@ export default function AppShell({
 
   useEffect(() => {
     if (!loadListingsOnMount || isOverview) return;
-    void loadListings(initialFilters, initialSource, city.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only city bootstrap
+
+    let cancelled = false;
+
+    async function bootstrap() {
+      setLoadingListings(true);
+      setListingsError(null);
+
+      try {
+        const params = searchParamsFromFilters(initialFilters);
+        params.set("source", initialSource);
+        params.set("city", city.id);
+        const response = await fetch(`/api/listings?${params.toString()}`);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Failed to load listings");
+        }
+        if (cancelled) return;
+
+        setListings(data.listings);
+        setFilters(initialFilters);
+        setSource(initialSource);
+
+        if (initialFocusListing && !cancelled) {
+          const match = (data.listings as Listing[]).find(
+            (listing) =>
+              listing.id === initialFocusListing.id &&
+              listing.source === initialFocusListing.source,
+          );
+
+          if (match) {
+            await fetchListingDetail(match.id, match.source, match.url);
+          } else {
+            await fetchListingDetail(
+              initialFocusListing.id,
+              initialFocusListing.source,
+              initialFocusListing.url,
+            );
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setListingsError(
+            e instanceof Error ? e.message : "Failed to load listings",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingListings(false);
+      }
+    }
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only bootstrap
   }, []);
 
   useEffect(() => {
@@ -119,33 +208,12 @@ export default function AppShell({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [filtersOpen]);
 
-  const loadDetail = useCallback(async (listing: Listing) => {
-    setSelectedId(listing.id);
-    setDetailLoading(true);
-    setDetailError(null);
-
-    try {
-      const params = new URLSearchParams({ source: listing.source });
-      if (listing.source === "shared" && listing.url) {
-        params.set("url", listing.url);
-      }
-      const response = await fetch(
-        `/api/listings/${listing.id}?${params.toString()}`,
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to load listing");
-      }
-      setDetail(data.detail);
-    } catch (e) {
-      setDetail(null);
-      setDetailError(
-        e instanceof Error ? e.message : "Failed to load listing",
-      );
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
+  const loadDetail = useCallback(
+    async (listing: Listing) => {
+      await fetchListingDetail(listing.id, listing.source, listing.url);
+    },
+    [fetchListingDetail],
+  );
 
   function closeDetail() {
     setSelectedId(null);
@@ -193,6 +261,53 @@ export default function AppShell({
   ]
     .filter(Boolean)
     .join(" · ");
+
+  const mapFlyToCoords = useMemo(() => {
+    if (!selectedId || !detail) return null;
+    if (listings.some((listing) => listing.id === selectedId)) return null;
+    if (!Number.isFinite(detail.lat) || !Number.isFinite(detail.lng)) {
+      return null;
+    }
+    return { lat: detail.lat, lng: detail.lng };
+  }, [selectedId, detail, listings]);
+
+  const mapListings = useMemo(() => {
+    if (!selectedId || !detail) return listings;
+    if (
+      listings.some(
+        (listing) =>
+          listing.id === selectedId && listing.source === detail.source,
+      )
+    ) {
+      return listings;
+    }
+    if (!Number.isFinite(detail.lat) || !Number.isFinite(detail.lng)) {
+      return listings;
+    }
+
+    return [
+      ...listings,
+      {
+        id: detail.id,
+        source: detail.source,
+        title: detail.title,
+        price: detail.price,
+        priceDisplay: detail.priceDisplay,
+        monthlyCost: null,
+        rooms: detail.rooms,
+        area: detail.area,
+        address: detail.address,
+        postcode: detail.postcode,
+        city: detail.city,
+        lat: detail.lat,
+        lng: detail.lng,
+        url: detail.url,
+        imageUrl: detail.images[0] ?? null,
+      },
+    ];
+  }, [listings, selectedId, detail]);
+
+  const detailOpen = Boolean(selectedId && university);
 
   const listingsCountLabel =
     loadingListings
@@ -347,11 +462,15 @@ export default function AppShell({
         )}
       </header>
 
-      <main className="relative min-h-0 flex-1 overflow-hidden">
-        <div className="absolute inset-0">
+      <main
+        className={`map-workspace min-h-0 flex-1 overflow-hidden${detailOpen ? " map-workspace--detail-open" : ""}`}
+      >
+        <div className="map-workspace-map">
           <MapView
-            listings={listings}
+            listings={mapListings}
             selectedId={selectedId}
+            flyToCoords={mapFlyToCoords}
+            layoutSplit={detailOpen}
             loading={loadingListings}
             mapLayer={mapLayer}
             city={city}
@@ -362,13 +481,10 @@ export default function AppShell({
         </div>
 
         <div
-          className={`absolute inset-y-0 right-0 z-[1000] flex w-full shadow-2xl transition-transform duration-300 ease-out lg:w-[45%] ${
-            selectedId
-              ? "translate-x-0"
-              : "pointer-events-none translate-x-full"
-          }`}
+          className="map-workspace-detail"
+          aria-hidden={!detailOpen}
         >
-          {selectedId && university && (
+          {detailOpen && university && (
             <ListingDetailPanel
               detail={detail}
               loading={detailLoading}

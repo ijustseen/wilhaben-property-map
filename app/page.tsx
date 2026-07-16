@@ -1,16 +1,21 @@
 import Link from "next/link";
+import JsonLd from "./components/JsonLd";
 import SiteFooter from "./components/SiteFooter";
 import SiteHeader from "./components/SiteHeader";
 import UniversitySearch from "./components/UniversitySearch";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
+import { buildHomeJsonLd, homePageMetadata } from "@/lib/seo";
 import { MAP_ENTRY_PATH } from "@/lib/universities";
+
+export const metadata = homePageMetadata();
 
 export default async function HomePage() {
   const user = await getCurrentUser();
 
   return (
     <div className="landing-shell">
+      <JsonLd data={buildHomeJsonLd()} />
       <div className="landing-hero-stack">
         <SiteHeader user={user} variant="light" overlay />
         <section className="landing-hero">

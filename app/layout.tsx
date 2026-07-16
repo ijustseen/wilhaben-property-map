@@ -1,7 +1,7 @@
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Outfit, Space_Grotesk } from "next/font/google";
-import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
+import { rootMetadata } from "@/lib/seo";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -15,10 +15,7 @@ const body = Outfit({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: `${BRAND_NAME} — student housing maps`,
-  description: BRAND_TAGLINE,
-};
+export const metadata: Metadata = rootMetadata;
 
 export default function RootLayout({
   children,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
 import { getCurrentUser } from "@/lib/auth";
@@ -8,12 +9,15 @@ import {
   getCheckoutUrl,
   PLANS,
 } from "@/lib/plans";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Pricing — StudiWohnkarte Plus",
   description:
     "Upgrade for listing alerts, saved searches, and PDF exports. Pay monthly via Lemon Squeezy.",
-};
+  path: "/pricing",
+  titleAbsolute: true,
+});
 
 export default async function PricingPage() {
   const user = await getCurrentUser();

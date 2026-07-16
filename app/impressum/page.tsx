@@ -11,11 +11,14 @@ import {
   legalPageTitle,
   siteUrl,
 } from "@/lib/legal";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: legalPageTitle("impressum"),
   description: `Legal notice and operator information for ${BRAND_NAME}.`,
-};
+  path: "/impressum",
+  titleAbsolute: true,
+});
 
 export default async function ImpressumPage() {
   const user = await getCurrentUser();

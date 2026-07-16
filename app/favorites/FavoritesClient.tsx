@@ -4,6 +4,7 @@ import Link from "next/link";
 import SiteHeader from "../components/SiteHeader";
 import { useFavorites } from "../components/useFavorites";
 import type { AuthUser } from "@/lib/auth";
+import { mapFavoriteListingPath } from "@/lib/map-search";
 import { MAP_ENTRY_PATH } from "@/lib/universities";
 
 const SOURCE_LABEL = {
@@ -79,7 +80,7 @@ export default function FavoritesClient({ user }: FavoritesClientProps) {
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Link
-                      href={`/map/${item.cityId}`}
+                      href={mapFavoriteListingPath(item)}
                       className="text-sm font-semibold text-[var(--link)] hover:underline"
                     >
                       Open on map

@@ -56,6 +56,8 @@ const MAP_LAYERS: Record<
 type RentalMapProps = {
   listings: Listing[];
   selectedId: string | null;
+  flyToCoords?: { lat: number; lng: number } | null;
+  layoutSplit?: boolean;
   mapLayer: MapLayerId;
   city: City;
   university: University | null;
@@ -119,15 +121,29 @@ function createCampusIcon(label: string) {
   });
 }
 
+function MapResizeBridge({ layoutSplit }: { layoutSplit: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.invalidateSize();
+    const timer = window.setTimeout(() => map.invalidateSize(), 320);
+    return () => window.clearTimeout(timer);
+  }, [layoutSplit, map]);
+
+  return null;
+}
+
 function MapViewport({
   listings,
   selectedId,
+  flyToCoords,
   routeGeometry,
   university,
   city,
 }: {
   listings: Listing[];
   selectedId: string | null;
+  flyToCoords?: { lat: number; lng: number } | null;
   routeGeometry: [number, number][];
   university: University | null;
   city: City;
@@ -184,8 +200,17 @@ function MapViewport({
       map.flyTo([selected.lat, selected.lng], Math.max(map.getZoom(), 15), {
         duration: 0.6,
       });
+      return;
     }
-  }, [listings, map, routeGeometry, selectedId]);
+
+    if (flyToCoords) {
+      map.flyTo(
+        [flyToCoords.lat, flyToCoords.lng],
+        Math.max(map.getZoom(), 15),
+        { duration: 0.6 },
+      );
+    }
+  }, [listings, map, routeGeometry, selectedId, flyToCoords]);
 
   return null;
 }
@@ -193,6 +218,8 @@ function MapViewport({
 export default function RentalMap({
   listings,
   selectedId,
+  flyToCoords = null,
+  layoutSplit = false,
   mapLayer,
   city,
   university,
@@ -254,9 +281,11 @@ export default function RentalMap({
         url={layer.url}
         maxZoom={layer.maxZoom ?? 19}
       />
+      <MapResizeBridge layoutSplit={layoutSplit} />
       <MapViewport
         listings={withCoords}
         selectedId={selectedId}
+        flyToCoords={flyToCoords}
         routeGeometry={routeGeometry}
         university={university}
         city={city}

@@ -10,11 +10,15 @@ import {
   legalPageTitle,
   siteUrl,
 } from "@/lib/legal";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: legalPageTitle("privacy"),
-  description: `Privacy policy (Datenschutz) for ${BRAND_NAME} — GDPR information.`,
-};
+  description:
+    "Privacy policy (Datenschutz) for StudiWohnkarte — GDPR information for users in Austria and the EU.",
+  path: "/privacy",
+  titleAbsolute: true,
+});
 
 export default async function PrivacyPage() {
   const user = await getCurrentUser();

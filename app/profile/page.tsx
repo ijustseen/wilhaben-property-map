@@ -1,12 +1,21 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import SiteHeader from "../components/SiteHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
 import { listFavorites } from "@/lib/favorites";
+import { pageMetadata } from "@/lib/seo";
 import { MAP_ENTRY_PATH, universityMapPath, UNIVERSITIES } from "@/lib/universities";
 
 const liveMapHref = MAP_ENTRY_PATH;
+
+export const metadata: Metadata = pageMetadata({
+  title: "Your profile",
+  description: `Manage your ${BRAND_NAME} account and saved listings.`,
+  path: "/profile",
+  noIndex: true,
+});
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();

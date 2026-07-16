@@ -1,7 +1,10 @@
 import { cookies, headers } from "next/headers";
+import type { Metadata } from "next";
 import AppShell from "../components/AppShell";
+import JsonLd from "../components/JsonLd";
 import { getCurrentUser } from "@/lib/auth";
 import { getAustriaOverviewCity } from "@/lib/cities";
+import { mapEntryMetadata } from "@/lib/seo";
 import { EMPTY_FILTERS } from "@/lib/willhaben";
 import {
   LOCALE_COOKIE,
@@ -9,6 +12,8 @@ import {
   isAppLocale,
   type AppLocale,
 } from "@/lib/locale";
+
+export const metadata: Metadata = mapEntryMetadata();
 
 async function getLocale(): Promise<AppLocale> {
   const cookieStore = await cookies();
