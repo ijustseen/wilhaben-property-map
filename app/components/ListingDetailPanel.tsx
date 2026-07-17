@@ -1,5 +1,6 @@
 "use client";
 
+import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppLocale } from "@/lib/locale";
 import { localeLabel } from "@/lib/locale";
@@ -122,14 +123,20 @@ export default function ListingDetailPanel({
             <button
               type="button"
               onClick={onToggleFavorite}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                 favorited
                   ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]"
                   : "border-[var(--line)] text-[var(--ink)] hover:bg-[var(--mist)]"
               }`}
               aria-pressed={favorited}
             >
-              {favorited ? "Saved ★" : "Save ★"}
+              <Heart
+                className="h-3.5 w-3.5"
+                strokeWidth={2}
+                fill={favorited ? "currentColor" : "none"}
+                aria-hidden
+              />
+              {favorited ? "Saved" : "Save"}
             </button>
           )}
           {detail && (

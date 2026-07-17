@@ -5,22 +5,69 @@ import { siteUrl } from "./legal";
 import type { University } from "./universities";
 import { UNIVERSITIES } from "./universities";
 
-export const SEO_KEYWORDS = [
+const CORE_SEO_KEYWORDS = [
+  "student accommodation Austria",
+  "accommodation for students Austria",
   "student housing Austria",
   "student apartments Austria",
+  "shared flats for students Austria",
   "WG room Austria",
   "shared flat Austria",
   "university housing map",
-  "willhaben student apartments",
-  "WG gesucht",
   "student dorm Austria",
-  "Linz student housing",
-  "Vienna student housing",
-  "Graz student housing",
-  "Innsbruck student housing",
-  "JKU housing",
-  "TU Wien housing",
+  "willhaben student apartments",
+  "WG gesucht students",
+  "housing for international students Austria",
+  "rent for students Austria",
+  "semester accommodation Austria",
 ] as const;
+
+function citySeoKeywords(city: City): string[] {
+  const name = city.name;
+  return [
+    `accommodation for students ${name}`,
+    `student accommodation ${name}`,
+    `apartments for students ${name}`,
+    `shared flats for students ${name}`,
+    `student housing ${name}`,
+    `WG room ${name}`,
+  ];
+}
+
+function universitySeoKeywords(uni: University, city: City): string[] {
+  const name = city.name;
+  return [
+    `apartments for ${uni.shortName} students`,
+    `${uni.shortName} student accommodation`,
+    `accommodation for ${uni.shortName} students`,
+    `shared flats for ${uni.shortName} students`,
+    `student housing ${uni.shortName}`,
+    `accommodation for students ${name}`,
+    `apartments for students ${name}`,
+    `shared flats for students ${name}`,
+    uni.name,
+  ];
+}
+
+/** Merged keyword list for root layout metadata. */
+export function buildGlobalSeoKeywords(): string[] {
+  const keywords = new Set<string>(CORE_SEO_KEYWORDS);
+  for (const city of CITIES.filter((entry) => entry.status === "available")) {
+    for (const phrase of citySeoKeywords(city)) {
+      keywords.add(phrase);
+    }
+  }
+  for (const uni of UNIVERSITIES.filter((entry) => entry.status === "available")) {
+    const city = CITIES.find((entry) => entry.id === uni.cityId);
+    if (!city) continue;
+    for (const phrase of universitySeoKeywords(uni, city)) {
+      keywords.add(phrase);
+    }
+  }
+  return [...keywords];
+}
+
+export const SEO_KEYWORDS = buildGlobalSeoKeywords();
 
 /** Default social preview — replace with a 1200×630 PNG when available. */
 export const DEFAULT_OG_IMAGE = "/map-preview.svg";
@@ -37,12 +84,14 @@ export function pageMetadata({
   path = "/",
   noIndex = false,
   titleAbsolute = false,
+  keywords,
 }: {
   title: string;
   description: string;
   path?: string;
   noIndex?: boolean;
   titleAbsolute?: boolean;
+  keywords?: string[];
 }): Metadata {
   const url = absoluteUrl(path);
   const displayTitle = titleAbsolute ? title : `${title} · ${BRAND_NAME}`;
@@ -50,6 +99,7 @@ export function pageMetadata({
   return {
     title: titleAbsolute ? { absolute: title } : title,
     description,
+    ...(keywords?.length ? { keywords } : {}),
     alternates: { canonical: url },
     robots: noIndex
       ? { index: false, follow: false, googleBot: { index: false, follow: false } }
@@ -84,10 +134,11 @@ export function pageMetadata({
 export const rootMetadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: `${BRAND_NAME} — Student housing maps in Austria`,
+    default: `${BRAND_NAME} — Student accommodation maps in Austria`,
     template: `%s · ${BRAND_NAME}`,
   },
-  description: BRAND_TAGLINE,
+  description:
+    "Free student accommodation map for Austria: apartments, shared flats (WG) and dorms near every major university. Find housing in Linz, Vienna, Graz, Innsbruck and more.",
   keywords: [...SEO_KEYWORDS],
   applicationName: BRAND_NAME,
   category: "real estate",
@@ -144,19 +195,31 @@ export const rootMetadata: Metadata = {
 
 export function homePageMetadata(): Metadata {
   return pageMetadata({
-    title: "Student housing maps for Austrian universities",
+    title: "Student accommodation in Austria — apartments, WGs & dorms",
     description:
-      "Pick your university and explore apartments, shared flats (WG) and dorms on an interactive map. Compare rent, location and commute to campus in Linz, Vienna, Graz, Innsbruck and more.",
+      "Accommodation for students across Austria: apartments for JKU, TU Wien, Uni Graz and every major campus. Shared flats, WGs and dorms on an interactive map with commute times to university.",
     path: "/",
+    keywords: [
+      "accommodation for students",
+      "accommodation for students Austria",
+      "student accommodation Austria",
+      "apartments for students",
+      "shared flats for students",
+    ],
   });
 }
 
 export function mapEntryMetadata(): Metadata {
   return pageMetadata({
-    title: "Housing map — choose a university",
+    title: "Student housing map — choose your university in Austria",
     description:
-      "Open the interactive student housing map for Austria. Filter by university, rent, rooms and housing type — apartments, WGs and dorms.",
+      "Interactive accommodation map for students in Austria. Filter apartments, shared flats (WG) and dorms by university, rent and rooms — Linz, Vienna, Graz, Salzburg, Innsbruck and more.",
     path: "/map",
+    keywords: [
+      "student housing map Austria",
+      "university accommodation map",
+      "accommodation for students Austria",
+    ],
   });
 }
 
@@ -164,16 +227,18 @@ export function cityMapMetadata(city: City, university?: University | null): Met
   if (university) {
     const cityName = city.name;
     return pageMetadata({
-      title: `${university.shortName} student housing — ${cityName}`,
-      description: `Find apartments, WG rooms and dorms near ${university.name} in ${cityName}, Austria. ${university.blurb} Browse listings on a map with commute times to campus.`,
+      title: `${university.shortName} student accommodation — apartments & shared flats, ${cityName}`,
+      description: `Apartments for ${university.shortName} students and accommodation near ${university.name} in ${cityName}, Austria. Browse shared flats (WG), dorms and rentals on a map — compare rent and commute to campus.`,
       path: `/map/${city.id}?university=${university.id}`,
+      keywords: universitySeoKeywords(university, city),
     });
   }
 
   return pageMetadata({
-    title: `Student housing map — ${city.name}, Austria`,
-    description: `${city.blurb} Browse ${city.highlight} listings on an interactive map. Filter by rent, rooms and housing type for students in ${city.name}.`,
+    title: `Accommodation for students in ${city.name}, Austria`,
+    description: `Student accommodation in ${city.name}: apartments, shared flats for students and dorms. ${city.blurb} Interactive map with filters for rent, rooms and housing type.`,
     path: `/map/${city.id}`,
+    keywords: citySeoKeywords(city),
   });
 }
 
@@ -190,6 +255,14 @@ export function buildHomeJsonLd() {
         description: BRAND_TAGLINE,
         inLanguage: "en",
         publisher: { "@id": `${url}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${url}/map?{search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
       },
       {
         "@type": "Organization",
@@ -239,9 +312,11 @@ export function buildCityMapJsonLd(city: City, university?: University | null) {
         "@id": `${url}/#webpage`,
         url,
         name: university
-          ? `${university.shortName} student housing — ${city.name}`
-          : `Student housing — ${city.name}, Austria`,
-        description: university?.blurb ?? city.blurb,
+          ? `${university.shortName} student accommodation — ${city.name}, Austria`
+          : `Accommodation for students — ${city.name}, Austria`,
+        description: university
+          ? `Apartments for ${university.shortName} students, shared flats and dorms in ${city.name}. ${university.blurb}`
+          : `Student accommodation in ${city.name}: apartments, shared flats and dorms. ${city.blurb}`,
         isPartOf: { "@id": `${siteUrl()}/#website` },
         about: {
           "@type": "Place",

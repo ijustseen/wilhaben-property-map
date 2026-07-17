@@ -2,6 +2,7 @@ import Link from "next/link";
 import JsonLd from "./components/JsonLd";
 import SiteFooter from "./components/SiteFooter";
 import SiteHeader from "./components/SiteHeader";
+import StudentHousingDiscover from "./components/StudentHousingDiscover";
 import UniversitySearch from "./components/UniversitySearch";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
@@ -117,6 +118,8 @@ export default async function HomePage() {
           />
         </div>
       </section>
+
+      <StudentHousingDiscover />
 
       <section className="landing-section landing-section--cta">
         <div className="landing-wrap landing-cta-band">

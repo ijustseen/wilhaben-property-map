@@ -17,9 +17,12 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { Listing } from "@/lib/willhaben";
 import { AUSTRIA_BOUNDS } from "@/lib/austria";
 import type { City } from "@/lib/cities";
+import type { FavoriteItem } from "@/lib/favorites";
+import { favoriteListingKey } from "@/lib/favorite-key";
 import type { TransitJourney } from "@/lib/transit";
 import type { MapLayerId } from "@/lib/map-layers";
 import type { University } from "@/lib/universities";
+import FavoriteMapMarkers from "./FavoriteMapMarkers";
 import ListingMarkerCluster from "./ListingMarkerCluster";
 
 const AUSTRIA_MAP_BOUNDS: L.LatLngBoundsExpression = [
@@ -61,7 +64,10 @@ type RentalMapProps = {
   mapLayer: MapLayerId;
   city: City;
   university: University | null;
+  favorites?: FavoriteItem[];
+  favoriteKeys?: Set<string>;
   onSelect: (listing: Listing) => void;
+  onFavoriteSelect?: (item: FavoriteItem) => void;
 };
 
 function formatEuro(value: number) {
@@ -80,7 +86,7 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-function createListingIcon(listing: Listing, selected: boolean) {
+function createListingIcon(listing: Listing, selected: boolean, favorited: boolean) {
   const kind = listing.source;
   const priceLabel = listing.price ? formatEuro(listing.price) : "·";
   const title = escapeHtml(listing.title);
@@ -92,12 +98,16 @@ function createListingIcon(listing: Listing, selected: boolean) {
         : listing.monthlyCost
           ? `Est. ${escapeHtml(listing.monthlyCost.totalDisplay)}`
           : "Apartment";
+  const favBadge = favorited
+    ? `<span class="listing-pin-fav" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.5-9.5-9C1 9 2.5 5.5 6 5c2 0 3.5 1.2 4 2.5C10.5 6.2 12 5 14 5c3.5 0 5 3.5 3.5 7-2.5 4.5-9.5 9-9.5 9Z"/></svg></span>`
+    : "";
 
   return L.divIcon({
     className: "listing-marker-root",
     iconSize: [220, 120],
     iconAnchor: [110, 120],
-    html: `<div class="listing-pin ${selected ? "listing-pin-selected" : ""} listing-pin-${kind}">
+    html: `<div class="listing-pin ${selected ? "listing-pin-selected" : ""} ${favorited ? "listing-pin-favorited" : ""} listing-pin-${kind}">
+      ${favBadge}
       <div class="listing-pin-card">
         <div class="listing-pin-compact">${priceLabel}</div>
         <div class="listing-pin-expand">
@@ -223,7 +233,10 @@ export default function RentalMap({
   mapLayer,
   city,
   university,
+  favorites = [],
+  favoriteKeys = new Set(),
   onSelect,
+  onFavoriteSelect,
 }: RentalMapProps) {
   const [routeGeometry, setRouteGeometry] = useState<[number, number][]>([]);
   const withCoords = useMemo(
@@ -233,7 +246,24 @@ export default function RentalMap({
   );
   const selected = listings.find((l) => l.id === selectedId) ?? null;
   const layer = MAP_LAYERS[mapLayer];
-  const createIcon = useMemo(() => createListingIcon, []);
+  const createIcon = useMemo(
+    () => (listing: Listing, selectedPin: boolean) =>
+      createListingIcon(
+        listing,
+        selectedPin,
+        favoriteKeys.has(favoriteListingKey(listing.id, listing.source)),
+      ),
+    [favoriteKeys],
+  );
+  const visibleListingKeys = useMemo(
+    () =>
+      new Set(
+        withCoords.map((listing) =>
+          favoriteListingKey(listing.id, listing.source),
+        ),
+      ),
+    [withCoords],
+  );
   const campusIcon = useMemo(
     () => (university ? createCampusIcon(university.shortName) : null),
     [university],
@@ -341,6 +371,15 @@ export default function RentalMap({
         onSelect={onSelect}
         createIcon={createIcon}
       />
+
+      {onFavoriteSelect && favorites.length > 0 ? (
+        <FavoriteMapMarkers
+          favorites={favorites}
+          cityId={city.id}
+          visibleListingKeys={visibleListingKeys}
+          onSelect={onFavoriteSelect}
+        />
+      ) : null}
     </MapContainer>
   );
 }

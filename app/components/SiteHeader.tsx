@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Heart, Map } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "@/lib/auth";
 import { BRAND_NAME } from "@/lib/brand";
 import { MAP_ENTRY_PATH } from "@/lib/universities";
+import HeaderBurgerMenu from "./HeaderBurgerMenu";
+import { useCompactHeader } from "./useCompactHeader";
 
 const liveMapHref = MAP_ENTRY_PATH;
 
@@ -24,6 +27,7 @@ export default function SiteHeader({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const compact = useCompactHeader();
 
   useEffect(() => {
     if (!overlay) return;
@@ -45,6 +49,40 @@ export default function SiteHeader({
     }
   }
 
+  const menuItems = useMemo(() => {
+    const mapLink = {
+      type: "link" as const,
+      href: liveMapHref,
+      label: "Map",
+      icon: <Map className="header-burger-item-icon" strokeWidth={2} aria-hidden />,
+    };
+    const savedLink = {
+      type: "link" as const,
+      href: "/favorites",
+      label: "Saved listings",
+      icon: <Heart className="header-burger-item-icon" strokeWidth={2} aria-hidden />,
+    };
+    if (user) {
+      return [
+        mapLink,
+        savedLink,
+        { type: "link" as const, href: "/profile", label: user.name.split(" ")[0] },
+        {
+          type: "button" as const,
+          label: "Log out",
+          disabled: busy,
+          onClick: () => void handleLogout(),
+        },
+      ];
+    }
+    return [
+      mapLink,
+      savedLink,
+      { type: "link" as const, href: "/login", label: "Log in" },
+      { type: "link" as const, href: "/register", label: "Sign up" },
+    ];
+  }, [user, busy]);
+
   return (
     <header
       className={[
@@ -59,39 +97,52 @@ export default function SiteHeader({
       <Link href="/" className="site-header-brand">
         {BRAND_NAME}
       </Link>
-      <nav>
-        <Link href={liveMapHref} className="site-header-link">
-          Map
-        </Link>
-        <Link href="/favorites" className="site-header-link">
-          Saved
-        </Link>
-        {user ? (
-          <>
-            <Link href="/profile" className="site-header-link">
-              {user.name.split(" ")[0]}
-            </Link>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleLogout}
-              className="site-header-link"
-              style={{ background: "transparent", border: 0, cursor: "pointer" }}
-            >
-              Log out
-            </button>
-          </>
-        ) : (
-          <>
-            <Link href="/login" className="site-header-link">
-              Log in
-            </Link>
-            <Link href="/register" className="site-header-cta">
-              Sign up
-            </Link>
-          </>
-        )}
-      </nav>
+      {compact ? (
+        <HeaderBurgerMenu
+          variant={variant === "solid" ? "solid" : "light"}
+          items={menuItems}
+        />
+      ) : (
+        <nav className="site-header-nav" aria-label="Main">
+          <Link href={liveMapHref} className="site-header-link site-header-link--icon">
+            <Map className="site-header-link-icon" strokeWidth={2} aria-hidden />
+            Map
+          </Link>
+          <Link href="/favorites" className="site-header-link site-header-link--icon">
+            <Heart className="site-header-link-icon" strokeWidth={2} aria-hidden />
+            Saved
+          </Link>
+          {user ? (
+            <>
+              <Link href="/profile" className="site-header-link">
+                {user.name.split(" ")[0]}
+              </Link>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleLogout()}
+                className="site-header-link"
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  cursor: "pointer",
+                }}
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="site-header-link">
+                Log in
+              </Link>
+              <Link href="/register" className="site-header-cta">
+                Sign up
+              </Link>
+            </>
+          )}
+        </nav>
+      )}
     </header>
   );
 }

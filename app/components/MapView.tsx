@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { City } from "@/lib/cities";
 import { MAP_LAYER_OPTIONS, type MapLayerId } from "@/lib/map-layers";
+import type { FavoriteItem } from "@/lib/favorites";
 import type { Listing } from "@/lib/willhaben";
 import type { University } from "@/lib/universities";
 
@@ -24,8 +25,11 @@ type MapViewProps = {
   mapLayer: MapLayerId;
   city: City;
   university: University | null;
+  favorites?: FavoriteItem[];
+  favoriteKeys?: Set<string>;
   onMapLayerChange: (layer: MapLayerId) => void;
   onSelect: (listing: Listing) => void;
+  onFavoriteSelect?: (item: FavoriteItem) => void;
 };
 
 export default function MapView({
@@ -37,8 +41,11 @@ export default function MapView({
   mapLayer,
   city,
   university,
+  favorites = [],
+  favoriteKeys,
   onMapLayerChange,
   onSelect,
+  onFavoriteSelect,
 }: MapViewProps) {
   return (
     <div className="relative h-full w-full">
@@ -51,7 +58,10 @@ export default function MapView({
           mapLayer={mapLayer}
           city={city}
           university={university}
+          favorites={favorites}
+          favoriteKeys={favoriteKeys}
           onSelect={onSelect}
+          onFavoriteSelect={onFavoriteSelect}
         />
       </div>
 
